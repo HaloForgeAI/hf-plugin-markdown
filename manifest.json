@@ -1,0 +1,68 @@
+{
+  "$schema": "https://haloforge.dev/schemas/plugin/v1.json",
+  "id": "dev.haloforge.markdown",
+  "name": "Markdown Workspace",
+  "version": "0.1.0",
+  "description": "AI-native Markdown reader workspace with recent files, document context, and an embedded assistant panel.",
+  "long_description": "Adds a top-level Markdown module to HaloForge so enabled users can open Markdown files from the sidebar, preview them with high-quality rendering, keep a recent-file list, and use a context-aware AI reading panel designed to evolve into a full editor workflow.",
+  "author": "HaloForge Team",
+  "homepage": "https://github.com/HaloForgeAI/hf-plugin-markdown",
+  "license": "MIT",
+  "keywords": ["markdown", "reader", "knowledge", "ai"],
+  "icon": "assets/icon.png",
+  "compatibility": {
+    "min_app_version": "1.0.0",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "capability_levels": [0],
+  "integration": {
+    "level0": {
+      "module_id": "markdown",
+      "module_label": "Markdown",
+      "module_icon": "FilePenLine",
+      "sidebar_position": "main",
+      "sidebar_order": 30,
+      "panel_entry": "frontend/index.js"
+    }
+  },
+  "entry": {
+    "native": {
+      "macos_arm64": "native/aarch64-apple-darwin.dylib",
+      "macos_x64": "native/x86_64-apple-darwin.dylib",
+      "windows_x64": "native/x86_64-pc-windows-msvc.dll",
+      "windows_arm64": "native/aarch64-pc-windows-msvc.dll",
+      "linux_x64": "native/x86_64-unknown-linux-gnu.so",
+      "linux_arm64": "native/aarch64-unknown-linux-gnu.so"
+    },
+    "frontend": "frontend/index.js",
+    "frontend_styles": "frontend/styles.css"
+  },
+  "permissions": [
+    { "type": "ipc_register" },
+    { "type": "filesystem_read" },
+    { "type": "database_create_tables" }
+  ],
+  "settings_schema": {
+    "type": "object",
+    "properties": {
+      "default_reader_theme": {
+        "type": "string",
+        "title": "Default reader theme",
+        "default": "paper"
+      },
+      "max_context_chars": {
+        "type": "number",
+        "title": "Maximum document context characters",
+        "default": 14000,
+        "minimum": 4000,
+        "maximum": 40000
+      }
+    }
+  },
+  "commands": [
+    { "id": "md_recent_files", "description": "List recently opened Markdown files" },
+    { "id": "md_open_file", "description": "Open a Markdown file and persist it in recents" },
+    { "id": "md_save_file", "description": "Save a Markdown file and refresh document metadata" },
+    { "id": "md_remove_recent_file", "description": "Remove a Markdown file from recents" }
+  ]
+}
