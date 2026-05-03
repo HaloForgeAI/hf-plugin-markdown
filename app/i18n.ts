@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useI18nStore } from "../../../src/shared/stores/i18nStore";
+import { useI18nStore } from "./host/i18n";
 
 const en = {
   "markdown.reader.open": "Open Markdown",

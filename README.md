@@ -16,9 +16,25 @@ A built-in Level 0 HaloForge plugin that adds an AI-native Markdown workspace to
 
 ## Plugin boundaries
 
-- Frontend UI lives under `plugins/hf-plugin-markdown/app/`
-- Native commands live under `plugins/hf-plugin-markdown/backend/`
-- The plugin is registered as a built-in plugin by the Tauri host
+- Frontend UI lives under `app/`
+- Native commands live under `backend/`
+- The plugin is packaged independently from the main HaloForge app
+
+## Packaging
+
+This repository builds independently from the main HaloForge app. The backend uses the published
+`haloforge-plugin-api` crate, and the frontend uses `@haloforge/plugin-sdk`.
+
+Local package check:
+
+```bash
+cargo run --manifest-path ../HaloForge/tools/hf-pack/Cargo.toml -- check .
+cargo run --manifest-path ../HaloForge/tools/hf-pack/Cargo.toml -- pack . --release --out dist/plugin-release
+```
+
+GitHub release packaging uses `.github/workflows/plugin-release.yml`. If the HaloForge tooling
+repository is private, set `HALOFORGE_TOOLS_TOKEN` with read access to `HaloForgeAI/HaloForge`.
+Set `HF_ADMIN_TOKEN` to submit generated catalog metadata to the production plugin catalog.
 
 ## Next evolution
 

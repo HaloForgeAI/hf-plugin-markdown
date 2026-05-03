@@ -1,10 +1,10 @@
 import type { KeyboardEvent } from "react";
 import clsx from "clsx";
 import { Bot, ChevronDown, ChevronRight, FileText, MessageSquare, PanelRightClose, PanelRightOpen, RefreshCw, Search, Settings, Trash2 } from "lucide-react";
-import { MarkdownRenderer } from "../../../../src/shared/components/MarkdownRenderer";
+import { MarkdownRenderer } from ".././host/MarkdownRenderer";
 import type { AssistantIntent, AssistantMessage, MarkdownTranslator } from "./types";
 import { formatTimestamp } from "./utils";
-import type { ModelConfig } from "../../../../src/shared/types";
+import type { ModelConfig } from ".././host/types";
 
 interface AssistantSidebarProps {
   activeModel: ModelConfig | null;
