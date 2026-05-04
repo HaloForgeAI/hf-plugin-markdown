@@ -24,7 +24,7 @@ impl HaloForgePlugin for MarkdownPlugin {
         PluginMetadata {
             id: "dev.haloforge.markdown".into(),
             name: "Markdown Workspace".into(),
-            version: "0.1.0".into(),
+            version: "0.1.2".into(),
             description: "AI-native Markdown reader workspace inside HaloForge.".into(),
             author: "HaloForge Team".into(),
             abi_version: PLUGIN_ABI_VERSION,
@@ -61,3 +61,5 @@ impl HaloForgePlugin for MarkdownPlugin {
         Ok(())
     }
 }
+
+hf_plugin_api::declare_plugin!(MarkdownPlugin, MarkdownPlugin::new);

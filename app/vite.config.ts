@@ -9,6 +9,7 @@ export default defineConfig({
       formats: ["iife"],
       name: "hfpluginmarkdownFrontend",
       fileName: () => "index.js",
+      cssFileName: "styles",
     },
     outDir: "dist",
     rollupOptions: {
