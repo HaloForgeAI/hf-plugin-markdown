@@ -6,7 +6,7 @@
   "description": "AI-native Markdown reader workspace with recent files, document context, and an embedded assistant panel.",
   "long_description": "Adds a top-level Markdown module to HaloForge so enabled users can open Markdown files from the sidebar, preview them with high-quality rendering, keep a recent-file list, and use a context-aware AI reading panel designed to evolve into a full editor workflow.",
   "author": "HaloForge Team",
-  "homepage": "https://github.com/HaloForgeAI/hf-plugin-markdown",
+  "homepage": "https://haloforge.link/catalog/plugins/markdown",
   "license": "MIT",
   "keywords": ["markdown", "reader", "knowledge", "ai"],
   "icon": "assets/icon.png",
