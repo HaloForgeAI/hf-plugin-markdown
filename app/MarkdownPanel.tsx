@@ -71,7 +71,7 @@ import {
 
 export function MarkdownPanel() {
   const t = useMarkdownT();
-  const setActiveModule = useAppStore((s) => s.setActiveModule);
+  const openSettingsTab = useAppStore((s) => s.openSettingsTab);
   const activeModule = useAppStore((s) => s.activeModule);
   const pendingMarkdownOpenPath = useAppStore((s) => s.pendingMarkdownOpenPath);
   const clearPendingMarkdownOpenPath = useAppStore((s) => s.clearPendingMarkdownOpenPath);
@@ -715,11 +715,11 @@ export function MarkdownPanel() {
       return;
     }
 
-    if (!activeModel) {
-      setAssistantError(t("markdown.ai.modelMissing"));
-      setActiveModule("settings");
-      return;
-    }
+      if (!activeModel) {
+        setAssistantError(t("markdown.ai.modelMissing"));
+        openSettingsTab("models");
+        return;
+      }
 
     const userMessage: AssistantMessage = {
       id: crypto.randomUUID(),
@@ -773,7 +773,7 @@ export function MarkdownPanel() {
       const message = error instanceof Error ? error.message : String(error);
       setAssistantError(message || t("markdown.ai.error.sendFailed"));
     }
-  }, [activeModel, assistantSessionId, bindAssistantSession, document, question, selection, setActiveModule, t]);
+  }, [activeModel, assistantSessionId, bindAssistantSession, document, openSettingsTab, question, selection, t]);
 
   const handleAssistantKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
@@ -952,7 +952,7 @@ export function MarkdownPanel() {
           void sendAssistantIntent(intent);
         }}
         onQuestionKeyDown={handleAssistantKeyDown}
-        onOpenSettings={() => setActiveModule("settings")}
+        onOpenSettings={() => openSettingsTab("models")}
         onClearMessages={() => {
           if (document?.path) {
             replaceCurrentThread(document.path, true);
