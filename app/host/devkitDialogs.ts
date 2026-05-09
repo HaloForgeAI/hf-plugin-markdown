@@ -1,45 +1,24 @@
-import { invoke } from "@tauri-apps/api/core";
+import {
+  pickHostDirectory,
+  pickHostFile,
+  saveHostFile,
+  type HostFileDialogOptions,
+} from "@haloforge/plugin-sdk";
 
-interface PickFileOptions {
-  title?: string;
-  directory?: string;
-  filters?: string[];
-}
-
-interface PickDirectoryOptions {
-  title?: string;
-  directory?: string;
-}
-
-interface SaveFileOptions {
-  title?: string;
-  directory?: string;
-  defaultName?: string;
-  filters?: string[];
-}
+type PickFileOptions = HostFileDialogOptions;
+type PickDirectoryOptions = HostFileDialogOptions;
+type SaveFileOptions = HostFileDialogOptions;
 
 export async function pickFile(options: PickFileOptions = {}): Promise<string | null> {
-  return invoke<string | null>("devkit_pick_file", {
-    title: options.title ?? null,
-    directory: options.directory ?? null,
-    filters: options.filters ?? null,
-  });
+  return pickHostFile(options);
 }
 
 export async function pickDirectory(options: PickDirectoryOptions = {}): Promise<string | null> {
-  return invoke<string | null>("devkit_pick_directory", {
-    title: options.title ?? null,
-    directory: options.directory ?? null,
-  });
+  return pickHostDirectory(options);
 }
 
 export async function saveFile(options: SaveFileOptions = {}): Promise<string | null> {
-  return invoke<string | null>("devkit_save_file", {
-    title: options.title ?? null,
-    directory: options.directory ?? null,
-    defaultName: options.defaultName ?? null,
-    filters: options.filters ?? null,
-  });
+  return saveHostFile(options);
 }
 
 export function getParentDirectory(path: string): string {

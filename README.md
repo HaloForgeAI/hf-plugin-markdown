@@ -28,11 +28,13 @@ This repository builds independently from the main HaloForge app. The backend us
 Local package check:
 
 ```bash
-cargo run --manifest-path ../HaloForge/tools/hf-pack/Cargo.toml -- check .
-cargo run --manifest-path ../HaloForge/tools/hf-pack/Cargo.toml -- pack . --release --out dist/plugin-release
+npx @haloforge/plugin-pack check .
+npx @haloforge/plugin-pack pack . --release --out dist/plugin-release
 ```
 
 GitHub release packaging uses `.github/workflows/plugin-release.yml` and the public `/plugin-pack` npm package. Set `HF_ADMIN_TOKEN` to submit generated catalog metadata to the production plugin catalog.
+
+This plugin now uses only the documented `@haloforge/plugin-sdk` surface for host navigation, file intents, file dialogs, theme access, host AI transport, and host event subscriptions. It no longer depends on `window.__HF_HOST` or hard-coded HaloForge host commands in plugin source.
 
 ## Next evolution
 

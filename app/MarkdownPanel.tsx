@@ -7,8 +7,7 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { useHostEvent } from "@haloforge/plugin-sdk";
 import clsx from "clsx";
 import { useSidebarResize } from "./host/useSidebarResize";
 import { RefreshCw } from "lucide-react";
@@ -78,6 +77,9 @@ export function MarkdownPanel() {
   const fetchModelConfigs = useAIChatStore((s) => s.fetchModelConfigs);
   const modelConfigs = useAIChatStore((s) => s.modelConfigs);
   const selectedModelId = useAIChatStore((s) => s.selectedModelId);
+  const createAssistantSession = useAIChatStore((s) => s.createSession);
+  const getAssistantStreamState = useAIChatStore((s) => s.getStreamState);
+  const sendAssistantMessage = useAIChatStore((s) => s.sendMessage);
   const currentThemeType = useThemeStore((s) => s.currentTheme.theme_type);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const initialRestoreAttemptedRef = useRef(false);
@@ -278,38 +280,27 @@ export function MarkdownPanel() {
     void openDocument(pendingMarkdownOpenPath);
   }, [clearPendingMarkdownOpenPath, openDocument, pendingMarkdownOpenPath]);
 
-  useEffect(() => {
-    let cleaned = false;
-    let unlistenChunk: (() => void) | undefined;
-    let unlistenError: (() => void) | undefined;
+  const handleAssistantStreamChunk = useCallback((payload: unknown) => {
+    const chunk = payload as StreamChunk;
+    if (!currentAiSessionIdRef.current || chunk.session_id !== currentAiSessionIdRef.current) {
+      return;
+    }
+    setAssistantError(null);
+    setIsAssistantStreaming(!chunk.done);
+    setAssistantMessages((previous) => trimStoredThread(upsertAssistantMessage(previous, chunk)));
+  }, []);
 
-    void listen<StreamChunk>("aichat:stream-chunk", (event) => {
-      if (!currentAiSessionIdRef.current || event.payload.session_id !== currentAiSessionIdRef.current) {
-        return;
-      }
-      setAssistantError(null);
-      setIsAssistantStreaming(!event.payload.done);
-      setAssistantMessages((previous) => trimStoredThread(upsertAssistantMessage(previous, event.payload)));
-    }).then((fn) => {
-      if (cleaned) { fn(); } else { unlistenChunk = fn; }
-    });
-
-    void listen<StreamErrorEvent>("aichat:stream-error", (event) => {
-      if (!currentAiSessionIdRef.current || event.payload.session_id !== currentAiSessionIdRef.current) {
-        return;
-      }
-      setIsAssistantStreaming(false);
-      setAssistantError(event.payload.error || t("markdown.ai.error.streamFailed"));
-    }).then((fn) => {
-      if (cleaned) { fn(); } else { unlistenError = fn; }
-    });
-
-    return () => {
-      cleaned = true;
-      unlistenChunk?.();
-      unlistenError?.();
-    };
+  const handleAssistantStreamError = useCallback((payload: unknown) => {
+    const streamError = payload as StreamErrorEvent;
+    if (!currentAiSessionIdRef.current || streamError.session_id !== currentAiSessionIdRef.current) {
+      return;
+    }
+    setIsAssistantStreaming(false);
+    setAssistantError(streamError.error || t("markdown.ai.error.streamFailed"));
   }, [t]);
+
+  useHostEvent("aichat:stream-chunk", handleAssistantStreamChunk);
+  useHostEvent("aichat:stream-error", handleAssistantStreamError);
 
   useEffect(() => {
     if (!document?.path) return;
@@ -547,9 +538,7 @@ export function MarkdownPanel() {
       }
 
       try {
-        const streamState = await invoke<StreamState | null>("aichat_get_stream_state", {
-          sessionId: assistantSessionId,
-        });
+        const streamState = await getAssistantStreamState<StreamState>(assistantSessionId);
 
         if (cancelled || !streamState) {
           return;
@@ -572,7 +561,7 @@ export function MarkdownPanel() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [assistantSessionId, hydrateAssistantStreamState, isAssistantStreaming]);
+  }, [assistantSessionId, getAssistantStreamState, hydrateAssistantStreamState, isAssistantStreaming]);
 
   const handlePickFile = useCallback(async () => {
     const directory = document?.path ? getParentDirectory(document.path) : undefined;
@@ -754,18 +743,16 @@ export function MarkdownPanel() {
           created_at: now,
           updated_at: now,
         };
-        const created = await invoke<ChatSession>("aichat_create_session", { session });
+        const created = await createAssistantSession<ChatSession>(session);
         sessionId = created.id;
         bindAssistantSession(document.path, created.id);
       }
 
-      await invoke("aichat_send_message", {
-        request: {
-          session_id: sessionId,
-          content: prompt,
-          model_config_id: activeModel.id,
-          system_prompt_override: MARKDOWN_ASSISTANT_SYSTEM_PROMPT,
-        },
+      await sendAssistantMessage({
+        session_id: sessionId,
+        content: prompt,
+        model_config_id: activeModel.id,
+        system_prompt_override: MARKDOWN_ASSISTANT_SYSTEM_PROMPT,
       });
     } catch (error) {
       setIsAssistantStreaming(false);
@@ -773,7 +760,18 @@ export function MarkdownPanel() {
       const message = error instanceof Error ? error.message : String(error);
       setAssistantError(message || t("markdown.ai.error.sendFailed"));
     }
-  }, [activeModel, assistantSessionId, bindAssistantSession, document, openSettingsTab, question, selection, t]);
+  }, [
+    activeModel,
+    assistantSessionId,
+    bindAssistantSession,
+    createAssistantSession,
+    document,
+    openSettingsTab,
+    question,
+    selection,
+    sendAssistantMessage,
+    t,
+  ]);
 
   const handleAssistantKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {

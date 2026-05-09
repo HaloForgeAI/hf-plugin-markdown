@@ -1,5 +1,6 @@
 import type { DragEvent } from "react";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { invokePlugin } from "@haloforge/plugin-sdk";
 import type {
   AssistantIntent,
   AssistantMessage,
@@ -47,12 +48,7 @@ export const MARKDOWN_ASSISTANT_SYSTEM_PROMPT = `你是 HaloForge 的 Markdown �
 - 回答长度适中，不要无谓重复用户已提供的原文`;
 
 export function markdownInvoke<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
-  return invoke<T>("plugin_invoke", {
-    args: {
-      wire_name: `dev.haloforge.markdown:${cmd}`,
-      args,
-    },
-  });
+  return invokePlugin<T>(cmd, args);
 }
 
 export function loadJsonStorage<T>(key: string, fallback: T): T {
