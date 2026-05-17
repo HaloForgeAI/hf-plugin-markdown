@@ -15,7 +15,7 @@
     "min_host_api_version": "0.1.0",
     "platforms": ["windows", "macos", "linux"]
   },
-  "host_capabilities": ["navigation", "file_intents", "file_dialogs", "aichat", "theme_read", "event_subscribe"],
+  "host_capabilities": ["navigation", "file_intents", "file_dialogs", "aichat", "theme_read", "event_subscribe", "deep_links"],
   "capability_levels": [0],
   "integration": {
     "level0": {
@@ -49,7 +49,8 @@
     { "type": "host_file_dialogs" },
     { "type": "host_aichat_access" },
     { "type": "host_theme_read" },
-    { "type": "host_event_subscribe" }
+    { "type": "host_event_subscribe" },
+    { "type": "host_deep_links" }
   ],
   "settings_schema": {
     "type": "object",

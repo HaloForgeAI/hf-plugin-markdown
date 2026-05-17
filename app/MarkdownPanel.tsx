@@ -7,7 +7,7 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from "react";
-import { useHostEvent } from "@haloforge/plugin-sdk";
+import { clearPendingPluginDeepLink, useHostEvent, usePluginDeepLink } from "@haloforge/plugin-sdk";
 import clsx from "clsx";
 import { useSidebarResize } from "./host/useSidebarResize";
 import { RefreshCw } from "lucide-react";
@@ -223,6 +223,18 @@ export function MarkdownPanel() {
     }
     await performOpenDocument(path);
   }, [document?.path, isDirty, performOpenDocument]);
+
+  usePluginDeepLink(useCallback((link) => {
+    if (link.route !== "/v1/open" && link.route !== "/open" && link.route !== "/v1/import" && link.route !== "/import") {
+      return;
+    }
+    const path = link.params.path ?? link.params.file ?? link.params.filePath;
+    if (!path) {
+      return;
+    }
+    clearPendingPluginDeepLink();
+    void openDocument(path);
+  }, [openDocument]));
 
   const saveDocument = useCallback(async () => {
     if (!document || !isDirty) {
