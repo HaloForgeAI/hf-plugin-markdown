@@ -28,15 +28,15 @@ This repository builds independently from the main HaloForge app. The backend us
 Local package check:
 
 ```bash
-npx @haloforge/plugin-pack@0.2.5 check .
-npx @haloforge/plugin-pack@0.2.5 pack . --release --out dist/plugin-release
+npx @haloforge/plugin-pack@0.2.9 check .
+npx @haloforge/plugin-pack@0.2.9 pack . --release --out dist/plugin-release
 ```
 
 Install the packaged plugin into a local HaloForge workspace with the `hf` CLI:
 
 ```bash
 cd /path/to/HaloForge
-npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.3.hfpkg --json
+npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.4.hfpkg --json
 npm run hf -- plugin list --json
 ```
 
