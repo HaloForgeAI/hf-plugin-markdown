@@ -187,38 +187,41 @@ export function MarkdownHeader({
             </ToolbarIconButton>
           </div>
 
-          {/* Theme picker — read mode only, icon + short labels */}
-          {workspaceMode === "read" && (
-            <div
-              className="flex items-center gap-0.5 rounded-full border border-border bg-background/90 p-0.5 shadow-sm"
-              title={t("markdown.reader.previewStyle")}
-            >
-              <span className="inline-flex h-7 w-7 items-center justify-center text-foreground-secondary/60">
-                <Palette size={12} />
-              </span>
-              {previewThemes.map((theme) => {
-                const isActive = previewTheme === theme;
-                const label = getPreviewThemeLabel(theme, t);
-                return (
-                  <button
-                    key={theme}
-                    type="button"
-                    title={label}
-                    aria-pressed={isActive}
-                    onClick={() => onPreviewThemeChange(theme)}
-                    className={clsx(
-                      "inline-flex h-7 items-center justify-center rounded-full px-2 text-[11px] font-medium transition-colors",
-                      isActive
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-foreground-secondary hover:bg-surface hover:text-foreground",
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* Theme picker — read mode only, reserved so mode buttons never shift */}
+          <div
+            className={clsx(
+              "flex items-center gap-0.5 rounded-full border border-border bg-background/90 p-0.5 shadow-sm",
+              workspaceMode !== "read" && "invisible pointer-events-none",
+            )}
+            title={t("markdown.reader.previewStyle")}
+            aria-hidden={workspaceMode !== "read"}
+          >
+            <span className="inline-flex h-7 w-7 items-center justify-center text-foreground-secondary/60">
+              <Palette size={12} />
+            </span>
+            {previewThemes.map((theme) => {
+              const isActive = previewTheme === theme;
+              const label = getPreviewThemeLabel(theme, t);
+              return (
+                <button
+                  key={theme}
+                  type="button"
+                  title={label}
+                  aria-pressed={isActive}
+                  tabIndex={workspaceMode === "read" ? 0 : -1}
+                  onClick={() => onPreviewThemeChange(theme)}
+                  className={clsx(
+                    "inline-flex h-7 items-center justify-center rounded-full px-2 text-[11px] font-medium transition-colors",
+                    isActive
+                      ? "bg-primary text-white shadow-sm"
+                      : "text-foreground-secondary hover:bg-surface hover:text-foreground",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
 
           {/* Save */}
           <div
