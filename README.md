@@ -36,7 +36,7 @@ Install the packaged plugin into a local HaloForge workspace with the `hf` CLI:
 
 ```bash
 cd /path/to/HaloForge
-npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.2.hfpkg --json
+npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.3.hfpkg --json
 npm run hf -- plugin list --json
 ```
 
