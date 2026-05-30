@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { useHostAI } from "@haloforge/plugin-sdk";
+import type { ModelConfig } from "./types";
 
 type AIChatState = {
   sessions: unknown[];
   activeSessionId: string | null;
   messages: unknown[];
-  modelConfigs: unknown[];
+  modelConfigs: ModelConfig[];
   selectedModelId: string | null;
   isStreaming: boolean;
   streamingContent: string;

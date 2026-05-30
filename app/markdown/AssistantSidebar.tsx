@@ -24,6 +24,7 @@ interface AssistantSidebarProps {
   onQuestionKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   onOpenSettings: () => void;
   onClearMessages: () => void;
+  themeType: "light" | "dark";
   t: MarkdownTranslator;
 }
 
@@ -45,6 +46,7 @@ export function AssistantSidebar({
   onQuestionKeyDown,
   onOpenSettings,
   onClearMessages,
+  themeType,
   t,
 }: AssistantSidebarProps) {
   const sidebarWidth = isCollapsed ? 76 : (width ?? 360);
@@ -129,7 +131,11 @@ export function AssistantSidebar({
                       <span className="text-[10px] text-foreground-secondary/40">{formatTimestamp(message.createdAt)}</span>
                     </div>
                     {message.role === "assistant" ? (
-                      <MarkdownRenderer content={message.content} isStreaming={message.isStreaming} />
+                      <MarkdownRenderer
+                        content={message.content}
+                        isStreaming={message.isStreaming}
+                        themeType={themeType}
+                      />
                     ) : (
                       <div className="text-sm leading-relaxed text-foreground">{message.content}</div>
                     )}

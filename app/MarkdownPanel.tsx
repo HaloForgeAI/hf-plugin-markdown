@@ -17,7 +17,7 @@ import { useAIChatStore } from "./host/aichatStore";
 import { useThemeStore } from "./host/themeStore";
 import { getParentDirectory, pickFile, saveFile } from "./host/devkitDialogs";
 import type { ChatSession, ModelConfig, StreamChunk, StreamErrorEvent, StreamState } from "./host/types";
-import { MarkdownEditorSurface } from "./MarkdownEditorSurface";
+import { MarkdownEditorSurface, type MarkdownEditorSurfaceHandle } from "./MarkdownEditorSurface";
 import { MarkdownSourceSurface } from "./MarkdownSourceSurface";
 import { useMarkdownT } from "./i18n";
 import { AssistantSidebar } from "./markdown/AssistantSidebar";
@@ -36,7 +36,6 @@ import {
   buildAssistantPrompt,
   buildDisplayPrompt,
   deriveDocumentFromContent,
-  expandTocMarkers,
   formatMarkdownFontScale,
   getDroppedMarkdownPath,
   getSelectionText,
@@ -82,9 +81,11 @@ export function MarkdownPanel() {
   const sendAssistantMessage = useAIChatStore((s) => s.sendMessage);
   const currentThemeType = useThemeStore((s) => s.currentTheme.theme_type);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const editorSurfaceRef = useRef<MarkdownEditorSurfaceHandle | null>(null);
   const initialRestoreAttemptedRef = useRef(false);
   const currentAiSessionIdRef = useRef<string | null>(null);
-  const pendingHeadingJumpRef = useRef<number | null>(null);
+  const scrollSyncFrameRef = useRef<number | null>(null);
+  const suppressActiveHeadingUntilRef = useRef(0);
 
   const [recentFiles, setRecentFiles] = useState<RecentMarkdownFile[]>([]);
   const [document, setDocument] = useState<MarkdownDocument | null>(null);
@@ -108,6 +109,7 @@ export function MarkdownPanel() {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(loadCollapsedState(LEFT_SIDEBAR_COLLAPSED_STORAGE_KEY));
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(loadCollapsedState(RIGHT_SIDEBAR_COLLAPSED_STORAGE_KEY));
   const [assistantSessionId, setAssistantSessionId] = useState<string | null>(null);
+  const [activeHeadingIndex, setActiveHeadingIndex] = useState<number | null>(null);
 
   const activeModel = useMemo<ModelConfig | null>(() => {
     if (modelConfigs.length === 0) return null;
@@ -389,37 +391,54 @@ export function MarkdownPanel() {
     setSelection(getSelectionText(previewRef.current).slice(0, MAX_SELECTION_CHARS));
   }, []);
 
+  const handleActiveHeadingChange = useCallback((index: number | null) => {
+    if (Date.now() < suppressActiveHeadingUntilRef.current) return;
+    setActiveHeadingIndex((previous) => previous === index ? previous : index);
+  }, []);
+
   useEffect(() => {
     if (selection) {
       setIsSelectionCollapsed(true);
     }
   }, [selection]);
 
-  const scrollPreviewHeading = useCallback((index: number, attempt = 0) => {
+  useEffect(() => {
+    setActiveHeadingIndex(null);
+  }, [document?.path]);
+
+  const scrollPreviewHeading = useCallback((index: number, attempt = 0): boolean => {
     const previewRoot = previewRef.current;
     const heading = previewRoot?.querySelectorAll("h1, h2, h3, h4, h5, h6")[index];
 
     if (heading instanceof HTMLElement) {
-      heading.scrollIntoView({ behavior: "smooth", block: "start" });
+      const scroller = getPreviewScroller(previewRoot);
+      scroller.scrollTo({
+        top: Math.max(0, getOffsetWithinScroller(heading, scroller) - 12),
+        behavior: "auto",
+      });
       heading.classList.add("hf-markdown-heading-target");
       window.setTimeout(() => heading.classList.remove("hf-markdown-heading-target"), 1400);
-      return;
+      setActiveHeadingIndex(index);
+      return true;
     }
 
     if (attempt < 10) {
       window.setTimeout(() => scrollPreviewHeading(index, attempt + 1), 80);
     }
+    return false;
   }, []);
 
   const handleJumpToHeading = useCallback((index: number) => {
-    pendingHeadingJumpRef.current = index;
-
-    if (workspaceMode !== "read") {
-      setWorkspaceMode("read");
+    suppressActiveHeadingUntilRef.current = Date.now() + 700;
+    setActiveHeadingIndex(index);
+    if (workspaceMode === "read") {
+      scrollPreviewHeading(index);
       return;
     }
 
-    scrollPreviewHeading(index);
+    if (!editorSurfaceRef.current?.jumpToHeading(index)) {
+      window.setTimeout(() => editorSurfaceRef.current?.jumpToHeading(index), 80);
+    }
   }, [scrollPreviewHeading, workspaceMode]);
 
   const hydrateAssistantStreamState = useCallback((streamState: StreamState) => {
@@ -474,16 +493,6 @@ export function MarkdownPanel() {
   }, []);
 
   useEffect(() => {
-    if (pendingHeadingJumpRef.current === null || workspaceMode !== "read") {
-      return;
-    }
-
-    const index = pendingHeadingJumpRef.current;
-    pendingHeadingJumpRef.current = null;
-    scrollPreviewHeading(index);
-  }, [document?.path, scrollPreviewHeading, workspaceMode]);
-
-  useEffect(() => {
     if (workspaceMode !== "read") return;
     const root = previewRef.current;
     if (!root) return;
@@ -525,7 +534,7 @@ export function MarkdownPanel() {
       if (target) {
         target.scrollIntoView({ behavior: "smooth", block: "start" });
         target.classList.add("hf-markdown-heading-target");
-        window.setTimeout(() => {
+      window.setTimeout(() => {
           target.classList.remove("hf-markdown-heading-target");
         }, 1400);
       }
@@ -536,6 +545,45 @@ export function MarkdownPanel() {
       root.removeEventListener("click", handleClick);
     };
   }, [workspaceMode, document?.path]);
+
+  useEffect(() => {
+    if (workspaceMode !== "read" || !document) return;
+    const root = previewRef.current;
+    if (!root) return;
+    const scroller = getPreviewScroller(root);
+
+    const updateActiveHeading = () => {
+      if (scrollSyncFrameRef.current !== null) return;
+      scrollSyncFrameRef.current = window.requestAnimationFrame(() => {
+        scrollSyncFrameRef.current = null;
+        if (Date.now() < suppressActiveHeadingUntilRef.current) return;
+        const headings = Array.from(root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"));
+        if (headings.length === 0) {
+          setActiveHeadingIndex(null);
+          return;
+        }
+
+        const top = scroller.scrollTop + Math.max(24, scroller.clientHeight * 0.16);
+        let nextIndex = 0;
+        headings.forEach((heading, index) => {
+          if (getOffsetWithinScroller(heading, scroller) <= top) {
+            nextIndex = index;
+          }
+        });
+        setActiveHeadingIndex((previous) => previous === nextIndex ? previous : nextIndex);
+      });
+    };
+
+    updateActiveHeading();
+    scroller.addEventListener("scroll", updateActiveHeading, { passive: true });
+    return () => {
+      scroller.removeEventListener("scroll", updateActiveHeading);
+      if (scrollSyncFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollSyncFrameRef.current);
+        scrollSyncFrameRef.current = null;
+      }
+    };
+  }, [workspaceMode, document?.path, document?.content]);
 
   useEffect(() => {
     if (!assistantSessionId || !isAssistantStreaming) {
@@ -799,7 +847,8 @@ export function MarkdownPanel() {
   return (
     <div
       className={clsx(
-        "relative flex h-full min-h-0 overflow-hidden",
+        "hf-markdown-panel relative flex h-full min-h-0 overflow-hidden",
+        currentThemeType === "dark" ? "hf-markdown-panel--dark" : "hf-markdown-panel--light",
         dragActive && "bg-primary/[0.03]",
       )}
       onDragOver={handleDragOver}
@@ -831,6 +880,7 @@ export function MarkdownPanel() {
           void handleRemoveRecent(path);
         }}
         onJumpToHeading={handleJumpToHeading}
+        activeHeadingIndex={activeHeadingIndex}
         t={t}
       />
 
@@ -892,34 +942,23 @@ export function MarkdownPanel() {
               onKeyUp={capturePreviewSelection}
               style={{ "--hf-md-font-scale": String(fontScale) } as React.CSSProperties}
               className={clsx(
-                "mx-auto rounded-[28px] border border-border p-6 md:p-8",
+                "mx-auto rounded-[28px] border",
                 resolvePreviewThemeClass(previewTheme),
               )}
             >
               <MarkdownRenderer
-                content={expandTocMarkers(document.content, document.headings)}
+                content={document.content}
                 sourcePath={document.path}
+                themeType={currentThemeType}
               />
             </div>
           ) : workspaceMode === "split" ? (
             <div className="h-full min-h-0">
               <MarkdownSourceSurface
+                ref={editorSurfaceRef}
                 value={document.content}
                 sourcePath={document.path}
                 headings={document.headings}
-                themeType={currentThemeType}
-                placeholder={t("markdown.reader.editPlaceholder")}
-                fontScale={fontScale}
-                focusToken={editorFocusToken}
-                onChange={handleEditorContentChange}
-                onSelectionChange={handleEditorSelectionChange}
-              />
-            </div>
-          ) : (
-            <div className="h-full min-h-0">
-              <MarkdownEditorSurface
-                value={document.content}
-                sourcePath={document.path}
                 themeType={currentThemeType}
                 placeholder={t("markdown.reader.editPlaceholder")}
                 documentPath={document.path}
@@ -927,6 +966,24 @@ export function MarkdownPanel() {
                 focusToken={editorFocusToken}
                 onChange={handleEditorContentChange}
                 onSelectionChange={handleEditorSelectionChange}
+                onActiveHeadingChange={handleActiveHeadingChange}
+              />
+            </div>
+          ) : (
+            <div className="h-full min-h-0">
+              <MarkdownEditorSurface
+                ref={editorSurfaceRef}
+                value={document.content}
+                sourcePath={document.path}
+                headings={document.headings}
+                themeType={currentThemeType}
+                placeholder={t("markdown.reader.editPlaceholder")}
+                documentPath={document.path}
+                fontScale={fontScale}
+                focusToken={editorFocusToken}
+                onChange={handleEditorContentChange}
+                onSelectionChange={handleEditorSelectionChange}
+                onActiveHeadingChange={handleActiveHeadingChange}
               />
             </div>
           )}
@@ -970,6 +1027,7 @@ export function MarkdownPanel() {
             setAssistantMessages([]);
           }
         }}
+        themeType={currentThemeType}
         t={t}
       />
 
@@ -1009,4 +1067,14 @@ export function MarkdownPanel() {
       )}
     </div>
   );
+}
+
+function getOffsetWithinScroller(element: HTMLElement, scroller: HTMLElement) {
+  const elementRect = element.getBoundingClientRect();
+  const scrollerRect = scroller.getBoundingClientRect();
+  return elementRect.top - scrollerRect.top + scroller.scrollTop;
+}
+
+function getPreviewScroller(root: HTMLElement) {
+  return root.parentElement ?? root;
 }

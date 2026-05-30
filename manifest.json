@@ -2,7 +2,7 @@
   "$schema": "https://haloforge.dev/schemas/plugin/v1.json",
   "id": "dev.haloforge.markdown",
   "name": "Markdown Workspace",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "AI-native Markdown reader workspace with recent files, document context, and an embedded assistant panel.",
   "long_description": "Adds a top-level Markdown module to HaloForge so enabled users can open Markdown files from the sidebar, preview them with high-quality rendering, keep a recent-file list, and use a context-aware AI reading panel designed to evolve into a full editor workflow.",
   "author": "HaloForge Team",
@@ -72,7 +72,9 @@
   "commands": [
     { "id": "md_recent_files", "description": "List recently opened Markdown files" },
     { "id": "md_open_file", "description": "Open a Markdown file and persist it in recents" },
+    { "id": "md_create_file", "description": "Create a Markdown file and open it" },
     { "id": "md_save_file", "description": "Save a Markdown file and refresh document metadata" },
-    { "id": "md_remove_recent_file", "description": "Remove a Markdown file from recents" }
+    { "id": "md_remove_recent_file", "description": "Remove a Markdown file from recents" },
+    { "id": "md_save_image", "description": "Save an embedded Markdown image beside the current document" }
   ]
 }

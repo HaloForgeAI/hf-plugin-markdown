@@ -29,6 +29,7 @@ interface ReaderSidebarProps {
   onOpenDocument: (path: string) => void;
   onRemoveRecent: (path: string) => void;
   onJumpToHeading: (index: number) => void;
+  activeHeadingIndex?: number | null;
   t: MarkdownTranslator;
 }
 
@@ -43,6 +44,7 @@ export function ReaderSidebar({
   onOpenDocument,
   onRemoveRecent,
   onJumpToHeading,
+  activeHeadingIndex,
   t,
 }: ReaderSidebarProps) {
   const sidebarWidth = isCollapsed ? 76 : (width ?? 280);
@@ -174,9 +176,11 @@ export function ReaderSidebar({
                         title={`${heading.text} · L${heading.line}`}
                         onClick={() => onJumpToHeading(index)}
                         className={clsx(
-                          "flex w-full items-center rounded-md py-1 pr-2 text-left leading-tight transition-colors hover:bg-primary/[0.06] hover:text-foreground",
+                          "hf-outline-heading flex w-full items-center rounded-md py-1 pr-2 text-left leading-tight transition-colors hover:bg-primary/[0.08] hover:text-foreground focus-visible:bg-primary/[0.1] focus-visible:outline-none",
+                          activeHeadingIndex === index && "hf-outline-heading--active",
                           resolveHeadingRowClass(heading.level),
                         )}
+                        aria-current={activeHeadingIndex === index ? "location" : undefined}
                         style={{ paddingLeft: `${6 + (heading.level - 1) * 12}px` }}
                       >
                         <span className="truncate">{heading.text}</span>

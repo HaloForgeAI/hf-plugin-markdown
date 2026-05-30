@@ -1,5 +1,4 @@
 import type { DragEvent } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { invokePlugin } from "@haloforge/plugin-sdk";
 import type {
   AssistantIntent,
@@ -320,12 +319,12 @@ export function translateDocumentError(message: string, t: MarkdownTranslator, f
 
 export function resolvePreviewThemeClass(theme: PreviewTheme) {
   if (theme === "focus") {
-    return "hf-preview-surface hf-preview-surface--focus max-w-[780px] bg-background/70";
+    return "hf-preview-surface hf-preview-surface--focus max-w-[820px]";
   }
   if (theme === "compact") {
-    return "hf-preview-surface hf-preview-surface--compact max-w-[840px] bg-background/90";
+    return "hf-preview-surface hf-preview-surface--compact max-w-[1040px]";
   }
-  return "hf-preview-surface hf-preview-surface--paper max-w-[960px] bg-background";
+  return "hf-preview-surface hf-preview-surface--paper max-w-[980px]";
 }
 
 export function buildDisplayPrompt(
@@ -427,69 +426,6 @@ export function trimStoredThread(messages: AssistantMessage[]): AssistantMessage
     return messages;
   }
   return messages.slice(messages.length - MAX_STORED_THREAD_MESSAGES);
-}
-
-const ABSOLUTE_URL_RE = /^[a-zA-Z][a-zA-Z0-9+\-.]*:/;
-
-const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "ogg", "ogv", "mov", "m4v"]);
-const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "flac", "aac", "m4a"]);
-
-export type MediaKind = "image" | "video" | "audio";
-
-export function detectMediaKindFromSrc(src: string | undefined | null): MediaKind {
-  if (!src) return "image";
-  const withoutQuery = src.split(/[?#]/)[0] ?? "";
-  const dot = withoutQuery.lastIndexOf(".");
-  if (dot < 0) return "image";
-  const ext = withoutQuery.slice(dot + 1).toLowerCase();
-  if (VIDEO_EXTENSIONS.has(ext)) return "video";
-  if (AUDIO_EXTENSIONS.has(ext)) return "audio";
-  return "image";
-}
-
-function getParentDirSeparator(path: string): string {
-  return /\\/.test(path) && !/\//.test(path) ? "\\" : "/";
-}
-
-function getMarkdownParentDir(sourcePath: string): string {
-  const normalized = sourcePath.replace(/\\/g, "/");
-  const lastSlash = normalized.lastIndexOf("/");
-  if (lastSlash < 0) return "";
-  return normalized.slice(0, lastSlash);
-}
-
-export function resolveLocalAssetSrc(rawSrc: string | undefined, sourcePath: string | null | undefined): string | undefined {
-  if (!rawSrc) return rawSrc;
-  const trimmed = rawSrc.trim();
-  if (!trimmed) return rawSrc;
-
-  if (ABSOLUTE_URL_RE.test(trimmed) || trimmed.startsWith("//") || trimmed.startsWith("data:") || trimmed.startsWith("blob:") || trimmed.startsWith("#")) {
-    return trimmed;
-  }
-
-  if (!sourcePath) return trimmed;
-
-  const parentDir = getMarkdownParentDir(sourcePath);
-  if (!parentDir) return trimmed;
-
-  const decodedSrc = (() => {
-    try {
-      return decodeURIComponent(trimmed);
-    } catch {
-      return trimmed;
-    }
-  })();
-
-  const cleaned = decodedSrc.replace(/\\/g, "/").replace(/^\.\//, "");
-  const sep = getParentDirSeparator(sourcePath);
-  const joined = `${parentDir}/${cleaned}`.replace(/\/+/g, "/");
-  const absolute = sep === "\\" ? joined.replace(/\//g, "\\") : joined;
-
-  try {
-    return convertFileSrc(absolute);
-  } catch {
-    return trimmed;
-  }
 }
 
 const TOC_MARKER_RE = /^\[toc\]$/i;

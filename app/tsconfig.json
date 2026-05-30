@@ -16,5 +16,10 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["./**/*.ts", "./**/*.tsx"]
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": [
+    "vendor/vditor/src",
+    "vendor/vditor/dist/ts",
+    "vendor/toastui-editor"
+  ]
 }

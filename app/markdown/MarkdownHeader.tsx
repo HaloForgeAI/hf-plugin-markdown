@@ -42,10 +42,8 @@ function ToolbarIconButton({ title, active = false, disabled = false, onClick, c
       disabled={disabled}
       onClick={onClick}
       className={clsx(
-        "inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors",
-        active
-          ? "border-primary bg-primary text-white shadow-sm"
-          : "border-transparent bg-transparent text-foreground-secondary hover:border-border hover:bg-surface hover:text-foreground",
+        "hf-toolbar-icon-button inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors",
+        active && "hf-toolbar-icon-button--active",
         disabled && "cursor-not-allowed opacity-45",
       )}
     >
@@ -112,7 +110,7 @@ export function MarkdownHeader({
       : t("markdown.reader.saved");
 
   return (
-    <div className="border-b border-border px-4 py-2.5">
+    <div className="hf-markdown-header border-b px-4 py-2.5">
       <div className="flex items-center gap-2">
         {/* Title — primary, takes all remaining space */}
         <div className="min-w-0 flex-1">
@@ -124,10 +122,8 @@ export function MarkdownHeader({
             {document && (
               <span
                 className={clsx(
-                  "shrink-0 whitespace-nowrap rounded-full px-1.5 py-px text-[10px] font-medium uppercase tracking-[0.12em]",
-                  isDirty
-                    ? "bg-amber-500/10 text-amber-300"
-                    : "bg-emerald-500/10 text-emerald-300",
+                  "hf-document-state-pill shrink-0 whitespace-nowrap rounded-full px-1.5 py-px text-[10px] font-medium uppercase tracking-[0.12em]",
+                  isDirty ? "hf-document-state-pill--dirty" : "hf-document-state-pill--saved",
                 )}
               >
                 {isDirty ? t("markdown.reader.unsaved") : t("markdown.reader.saved")}
@@ -144,7 +140,7 @@ export function MarkdownHeader({
         {/* Toolbar — compact, never shrinks */}
         <div className="flex shrink-0 items-center gap-1">
           {/* Mode switcher */}
-          <div className="flex items-center gap-0.5 rounded-full border border-border bg-background/90 p-0.5 shadow-sm">
+          <div className="hf-toolbar-group flex items-center gap-0.5 rounded-full border p-0.5 shadow-sm">
             {workspaceModes.map(({ mode, icon: Icon }) => (
               <ToolbarIconButton
                 key={mode}
@@ -160,7 +156,7 @@ export function MarkdownHeader({
           {/* Font size */}
           <div
             className={clsx(
-              "flex items-center gap-0.5 rounded-full border border-border bg-background/90 p-0.5 shadow-sm",
+              "hf-toolbar-group flex items-center gap-0.5 rounded-full border p-0.5 shadow-sm",
               !document && "invisible pointer-events-none",
             )}
             aria-hidden={!document}
@@ -175,7 +171,7 @@ export function MarkdownHeader({
               type="button"
               title={`${t("markdown.reader.fontReset")} · Cmd/Ctrl 0`}
               onClick={onResetFontScale}
-              className="inline-flex h-7 min-w-[40px] items-center justify-center rounded-full border border-transparent px-1.5 text-[11px] font-medium text-foreground-secondary transition-colors hover:border-border hover:bg-surface hover:text-foreground"
+              className="hf-toolbar-label-button inline-flex h-7 min-w-[40px] items-center justify-center rounded-full border px-1.5 text-[11px] font-medium transition-colors"
             >
               {fontScaleLabel}
             </button>
@@ -190,7 +186,7 @@ export function MarkdownHeader({
           {/* Theme picker — read mode only, reserved so mode buttons never shift */}
           <div
             className={clsx(
-              "flex items-center gap-0.5 rounded-full border border-border bg-background/90 p-0.5 shadow-sm",
+              "hf-toolbar-group flex items-center gap-0.5 rounded-full border p-0.5 shadow-sm",
               workspaceMode !== "read" && "invisible pointer-events-none",
             )}
             title={t("markdown.reader.previewStyle")}
@@ -213,8 +209,8 @@ export function MarkdownHeader({
                   className={clsx(
                     "inline-flex h-7 items-center justify-center rounded-full px-2 text-[11px] font-medium transition-colors",
                     isActive
-                      ? "bg-primary text-white shadow-sm"
-                      : "text-foreground-secondary hover:bg-surface hover:text-foreground",
+                      ? "hf-toolbar-text-button--active shadow-sm"
+                      : "hf-toolbar-text-button--idle",
                   )}
                 >
                   {label}
@@ -226,7 +222,7 @@ export function MarkdownHeader({
           {/* Save */}
           <div
             className={clsx(
-              "flex items-center rounded-full border border-border bg-background/90 p-0.5 shadow-sm",
+              "hf-toolbar-group flex items-center rounded-full border p-0.5 shadow-sm",
               !document && "invisible pointer-events-none",
             )}
             aria-hidden={!document}

@@ -9,8 +9,8 @@ A built-in Level 0 HaloForge plugin that adds an AI-native Markdown workspace to
 - Save Markdown files back to disk with existing line-ending preservation
 - Persist recently opened files in the plugin database
 - High-quality Markdown rendering using the shared renderer
-- Read / write workspace modes
-- Typora-style instant-rendering (IR) Markdown editing powered by Vditor
+- Read / split / write workspace modes
+- Vditor IR realtime-render editing in write mode, plus source editing with shared preview in split mode
 - Selection-aware AI reading panel scaffold backed by the existing AI Chat transport
 - Startup file-open bridge, macOS Opened event handling, and window drag-and-drop bridge
 
@@ -36,7 +36,7 @@ Install the packaged plugin into a local HaloForge workspace with the `hf` CLI:
 
 ```bash
 cd /path/to/HaloForge
-npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.4.hfpkg --json
+npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.5.hfpkg --json
 npm run hf -- plugin list --json
 ```
 
