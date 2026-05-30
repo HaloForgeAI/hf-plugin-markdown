@@ -8,5 +8,3 @@ node_modules/
 # Vendored editor distributions are source inputs for the plugin bundle.
 !app/vendor/vditor/dist/
 !app/vendor/vditor/dist/**
-!app/vendor/toastui-editor/npm-package/dist/
-!app/vendor/toastui-editor/npm-package/dist/**

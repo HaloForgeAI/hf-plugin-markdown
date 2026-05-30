@@ -36,7 +36,7 @@ Install the packaged plugin into a local HaloForge workspace with the `hf` CLI:
 
 ```bash
 cd /path/to/HaloForge
-npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.5.hfpkg --json
+npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.6.hfpkg --json
 npm run hf -- plugin list --json
 ```
 
@@ -45,6 +45,8 @@ npm run hf -- plugin list --json
 GitHub release packaging uses `.github/workflows/plugin-release.yml` and the public `/plugin-pack` npm package. Set `HF_ADMIN_TOKEN` to submit generated catalog metadata to the production plugin catalog.
 
 This plugin now uses only the documented `@haloforge/plugin-sdk` surface for host navigation, file intents, file dialogs, theme access, host AI transport, and host event subscriptions. It no longer depends on `window.__HF_HOST` or hard-coded HaloForge host commands in plugin source.
+
+Vditor is maintained as a git subtree from the `HaloForgeAI/vditor` fork on the `haloforge/markdown` branch. See `VENDORING.md` for the update workflow and `THIRD_PARTY_NOTICES.md` for bundled editor/runtime notices.
 
 ## Next evolution
 

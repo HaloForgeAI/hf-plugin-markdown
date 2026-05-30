@@ -19,7 +19,6 @@
   "include": ["./**/*.ts", "./**/*.tsx"],
   "exclude": [
     "vendor/vditor/src",
-    "vendor/vditor/dist/ts",
-    "vendor/toastui-editor"
+    "vendor/vditor/dist/ts"
   ]
 }

@@ -436,7 +436,7 @@ fn sanitize_stem(raw: &str) -> String {
 
 /// Save an image blob next to the active markdown document in an `images/`
 /// folder and return a relative path suitable for direct insertion into the
-/// document source. Prevents Toast UI from embedding base64 data URLs.
+/// document source instead of embedding base64 data URLs.
 pub fn md_save_image(args: Value, _ctx: &dyn PluginContext) -> Result<Value, PluginError> {
     let source_path = args["sourcePath"]
         .as_str()
