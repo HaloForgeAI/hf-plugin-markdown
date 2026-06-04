@@ -13,6 +13,7 @@ A built-in Level 0 HaloForge plugin that adds an AI-native Markdown workspace to
 - Vditor IR realtime-render editing in write mode, plus source editing with shared preview in split mode
 - Selection-aware AI reading panel scaffold backed by the existing AI Chat transport
 - Startup file-open bridge, macOS Opened event handling, and window drag-and-drop bridge
+- Manifest `window.document_handlers` registration for `.md`, `.markdown`, `.mdown`, and `.mkd`
 
 ## Plugin boundaries
 
@@ -28,15 +29,15 @@ This repository builds independently from the main HaloForge app. The backend us
 Local package check:
 
 ```bash
-npx @haloforge/plugin-pack@0.2.9 check .
-npx @haloforge/plugin-pack@0.2.9 pack . --release --out dist/plugin-release
+npx @haloforge/plugin-pack@0.2.11 check .
+npx @haloforge/plugin-pack@0.2.11 pack . --release --out dist/plugin-release
 ```
 
 Install the packaged plugin into a local HaloForge workspace with the `hf` CLI:
 
 ```bash
 cd /path/to/HaloForge
-npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.6.hfpkg --json
+npm run hf -- plugin install local /path/to/hf-plugin-markdown/dist/plugin-release/dev.haloforge.markdown-0.2.7.hfpkg --json
 npm run hf -- plugin list --json
 ```
 
