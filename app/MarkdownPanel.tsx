@@ -7,7 +7,7 @@ import {
   type DragEvent,
   type KeyboardEvent,
 } from "react";
-import { clearPendingPluginDeepLink, useHostEvent, usePluginDeepLink } from "@haloforge/plugin-sdk";
+import { clearPendingPluginDeepLink, useHostEvent, usePluginDeepLink, usePluginWindowTitle } from "@haloforge/plugin-sdk";
 import clsx from "clsx";
 import { useSidebarResize } from "./host/useSidebarResize";
 import { RefreshCw } from "lucide-react";
@@ -118,7 +118,10 @@ export function MarkdownPanel() {
 
   const isDirty = Boolean(document && savedContent !== null && document.content !== savedContent);
   const isActiveModule = activeModule === "markdown";
+  const windowTitle = isActiveModule ? document?.name?.trim() || null : null;
   const fontScaleLabel = formatMarkdownFontScale(fontScale);
+
+  usePluginWindowTitle(windowTitle, { subtitle: "Markdown" });
 
   const { width: leftWidth, isResizing: leftResizing, handleMouseDown: handleLeftResize } = useSidebarResize({
     defaultWidth: 280, minWidth: 200, maxWidth: 480,
