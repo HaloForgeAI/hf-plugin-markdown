@@ -118,7 +118,7 @@ export function MarkdownPanel() {
 
   const isDirty = Boolean(document && savedContent !== null && document.content !== savedContent);
   const isActiveModule = activeModule === "markdown";
-  const windowTitle = isActiveModule ? document?.name?.trim() || null : null;
+  const windowTitle = document?.name?.trim() || null;
   const fontScaleLabel = formatMarkdownFontScale(fontScale);
 
   usePluginWindowTitle(windowTitle, { subtitle: "Markdown" });
