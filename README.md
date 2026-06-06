@@ -29,8 +29,8 @@ This repository builds independently from the main HaloForge app. The backend us
 Local package check:
 
 ```bash
-npx @haloforge/plugin-pack@0.2.11 check .
-npx @haloforge/plugin-pack@0.2.11 pack . --release --out dist/plugin-release
+npx @haloforge/plugin-pack@0.2.13 check .
+npx @haloforge/plugin-pack@0.2.13 pack . --release --out dist/plugin-release
 ```
 
 Install the packaged plugin into a local HaloForge workspace with the `hf` CLI:
