@@ -152,6 +152,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
   const themeTypeRef = useRef(_themeType);
   const pendingInitialValueRef = useRef(value);
   const cancelHighlightRef = useRef<(() => void) | null>(null);
+  const selectionGestureUntilRef = useRef(0);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -253,6 +254,10 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
         pin: true,
       },
       input: (nextValue: string) => {
+        if (shouldIgnoreSelectionOnlyInput(nextValue)) {
+          restoreEditorValueAfterSelectionGesture(editor, host);
+          return;
+        }
         valueRef.current = nextValue;
         onChangeRef.current(nextValue);
         if (isSplitMode) {
@@ -339,12 +344,25 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
     vditorRef.current = editor;
 
     const handleClick = (event: MouseEvent) => {
-      const anchor = (event.target as HTMLElement | null)?.closest?.("a[href]");
+      const target = event.target as HTMLElement | null;
+      const tocTarget = findTocTargetElement(target, host);
       window.requestAnimationFrame(() => {
         normalizeVditorRenderedDom(host);
         queueEditorHighlight(host);
         emitActiveHeadingChange();
       });
+      if (tocTarget) {
+        event.preventDefault();
+        event.stopPropagation();
+        scrollToRenderedHeadingTarget({
+          rawId: tocTarget.getAttribute("data-target-id") ?? "",
+          anchorText: tocTarget.textContent ?? "",
+          root: resolveTocSearchRoot(tocTarget, getInternalVditor()) ?? host,
+        });
+        return;
+      }
+
+      const anchor = target?.closest?.("a[href]");
       if (!(anchor instanceof HTMLAnchorElement)) return;
       if (!(event.metaKey || event.ctrlKey)) return;
       event.preventDefault();
@@ -352,7 +370,13 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       handleRenderedLinkClick(anchor.getAttribute("href"), anchor.textContent ?? "", host, sourcePathRef.current);
     };
 
+    const handleSelectionGesture = () => {
+      selectionGestureUntilRef.current = Date.now() + 600;
+    };
+
     host.addEventListener("click", handleClick, true);
+    host.addEventListener("dblclick", handleSelectionGesture, true);
+    host.addEventListener("selectstart", handleSelectionGesture, true);
 
     const handleEditorActivity = () => {
       window.requestAnimationFrame(() => {
@@ -379,6 +403,8 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
 
     return () => {
       host.removeEventListener("click", handleClick, true);
+      host.removeEventListener("dblclick", handleSelectionGesture, true);
+      host.removeEventListener("selectstart", handleSelectionGesture, true);
       host.removeEventListener("focusin", handleEditorActivity, true);
       host.removeEventListener("keyup", handleEditorActivity, true);
       activeListenerElements.forEach((element) => {
@@ -576,6 +602,28 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       preview.setAttribute("data-render", "1");
     });
   };
+
+  function shouldIgnoreSelectionOnlyInput(nextValue: string) {
+    if (Date.now() > selectionGestureUntilRef.current) return false;
+    const internal = getInternalVditor();
+    if (internal?.currentMode !== "wysiwyg") return false;
+    const previousValue = valueRef.current;
+    if (nextValue === previousValue) return true;
+    return isLikelySelectionOnlyLineJoin(previousValue, nextValue);
+  }
+
+  function restoreEditorValueAfterSelectionGesture(editor: VditorInstance, host: HTMLElement) {
+    const restoredValue = valueRef.current;
+    window.requestAnimationFrame(() => {
+      if (vditorRef.current !== editor || !isVditorReadyRef.current) return;
+      if (editor.getValue() === restoredValue) return;
+      editor.setValue(restoredValue);
+      normalizeVditorRenderedDom(host);
+      renderPendingVditorPreviews(host);
+      queueEditorHighlight(host);
+      emitActiveHeadingChange();
+    });
+  }
 
   function handleInlineCodeLanguageChange(block: HTMLElement, language: string) {
     const normalizedLanguage = normalizeCodeLanguageInput(language);
@@ -1166,25 +1214,7 @@ function handleRenderedLinkClick(href: string | undefined | null, anchorText: st
   if (!rawHref || rawHref === "#") return;
 
   if (rawHref.startsWith("#")) {
-    const rawId = rawHref.slice(1);
-    let decodedId = rawId;
-    try {
-      decodedId = decodeURIComponent(rawId);
-    } catch {
-      decodedId = rawId;
-    }
-
-    const headings = Array.from(root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"));
-    const target =
-      headings.find((heading) => heading.id === decodedId) ??
-      headings.find((heading) => heading.id === rawId) ??
-      headings.find((heading) => (heading.textContent ?? "").trim() === anchorText.trim());
-
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-      target.classList.add("hf-markdown-heading-target");
-      window.setTimeout(() => target.classList.remove("hf-markdown-heading-target"), 1400);
-    }
+    scrollToRenderedHeadingTarget({ rawId: rawHref.slice(1), anchorText, root });
     return;
   }
 
@@ -1193,6 +1223,100 @@ function handleRenderedLinkClick(href: string | undefined | null, anchorText: st
   void openUrl(resolved).catch((error) => {
     console.error("Failed to open markdown link", error);
   });
+}
+
+function findTocTargetElement(target: HTMLElement | null, root: HTMLElement) {
+  const targetElement = target?.closest?.("[data-target-id]");
+  if (!(targetElement instanceof HTMLElement) || !root.contains(targetElement)) {
+    return null;
+  }
+  const targetId = targetElement.getAttribute("data-target-id")?.trim();
+  if (!targetId || !targetElement.closest(".vditor-toc")) {
+    return null;
+  }
+  return targetElement;
+}
+
+function resolveTocSearchRoot(tocTarget: HTMLElement, internal: VditorInternal | null) {
+  const previewRoot = internal?.preview?.previewElement;
+  if (previewRoot?.contains(tocTarget)) {
+    return previewRoot;
+  }
+  const previewScroller = internal?.preview?.element;
+  if (previewScroller?.contains(tocTarget)) {
+    return previewRoot ?? previewScroller;
+  }
+  const editorElement = internal ? getCurrentModeElement(internal) : null;
+  if (editorElement?.contains(tocTarget)) {
+    return editorElement;
+  }
+  return tocTarget.closest<HTMLElement>(".vditor-reset, .vditor-wysiwyg, .vditor-ir, .vditor-sv");
+}
+
+function scrollToRenderedHeadingTarget({
+  rawId,
+  anchorText,
+  root,
+}: {
+  rawId: string;
+  anchorText: string;
+  root: HTMLElement;
+}) {
+  const decodedId = decodeHashId(rawId);
+  const target = findHeadingTarget(root, decodedId, rawId, anchorText);
+  if (!target) return false;
+
+  const scroller = findScrollableAncestor(target, root);
+  if (scroller) {
+    scroller.scrollTo({
+      top: Math.max(0, getOffsetWithinScroller(target, scroller) - 12),
+      behavior: "smooth",
+    });
+  } else {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  target.classList.add("hf-markdown-heading-target");
+  window.setTimeout(() => target.classList.remove("hf-markdown-heading-target"), 1400);
+  return true;
+}
+
+function decodeHashId(rawId: string) {
+  try {
+    return decodeURIComponent(rawId);
+  } catch {
+    return rawId;
+  }
+}
+
+function findHeadingTarget(root: HTMLElement, decodedId: string, rawId: string, anchorText: string) {
+  const trimmedAnchorText = anchorText.trim();
+  const headings = Array.from(root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"));
+  return headings.find((heading) => heading.id === decodedId) ??
+    headings.find((heading) => heading.id === rawId) ??
+    headings.find((heading) => (heading.textContent ?? "").trim() === trimmedAnchorText) ??
+    null;
+}
+
+function findScrollableAncestor(element: HTMLElement, _root: HTMLElement) {
+  let current: HTMLElement | null = element.parentElement;
+  while (current && current !== document.body) {
+    const style = window.getComputedStyle(current);
+    const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
+    if (canScrollY && current.scrollHeight > current.clientHeight) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+  return null;
+}
+
+function isLikelySelectionOnlyLineJoin(previousValue: string, nextValue: string) {
+  if (previousValue === nextValue) return true;
+  if (previousValue.length <= nextValue.length) return false;
+  const removedLength = previousValue.length - nextValue.length;
+  if (removedLength > 8) return false;
+  const previousWithoutSoftBreaks = previousValue.replace(/(?<!\n)\n(?!\n)/g, "");
+  return previousWithoutSoftBreaks === nextValue;
 }
 
 function getLanguageClass(block: HTMLElement) {

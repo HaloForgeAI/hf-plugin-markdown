@@ -83,7 +83,16 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     if (!root) return;
 
     const handleClick = (event: MouseEvent) => {
-      const anchor = (event.target as HTMLElement | null)?.closest?.("a[href]");
+      const target = event.target as HTMLElement | null;
+      const tocTarget = findTocTargetElement(target, root);
+      if (tocTarget) {
+        event.preventDefault();
+        event.stopPropagation();
+        scrollToHashLink(tocTarget.getAttribute("data-target-id") ?? "", tocTarget.textContent ?? "", root);
+        return;
+      }
+
+      const anchor = target?.closest?.("a[href]");
       if (!(anchor instanceof HTMLAnchorElement)) return;
 
       const rawHref = anchor.getAttribute("href") ?? "";
@@ -206,7 +215,7 @@ function detectMediaKindFromSrc(src: string | undefined | null): MediaKind {
 }
 
 function scrollToHashLink(rawHref: string, anchorText: string, root: HTMLElement | null) {
-  const rawId = rawHref.slice(1);
+  const rawId = rawHref.startsWith("#") ? rawHref.slice(1) : rawHref;
   if (!rawId) return;
   const decodedId = (() => {
     try {
@@ -223,10 +232,49 @@ function scrollToHashLink(rawHref: string, anchorText: string, root: HTMLElement
     headings.find((heading) => (heading.textContent ?? "").trim() === anchorText.trim());
 
   if (target) {
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    const scroller = findScrollableAncestor(target, root);
+    if (scroller) {
+      scroller.scrollTo({
+        top: Math.max(0, getOffsetWithinScroller(target, scroller) - 12),
+        behavior: "smooth",
+      });
+    } else {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     target.classList.add("hf-markdown-heading-target");
     window.setTimeout(() => target.classList.remove("hf-markdown-heading-target"), 1400);
   }
+}
+
+function findTocTargetElement(target: HTMLElement | null, root: HTMLElement) {
+  const targetElement = target?.closest?.("[data-target-id]");
+  if (!(targetElement instanceof HTMLElement) || !root.contains(targetElement)) {
+    return null;
+  }
+  const targetId = targetElement.getAttribute("data-target-id")?.trim();
+  if (!targetId || !targetElement.closest(".vditor-toc")) {
+    return null;
+  }
+  return targetElement;
+}
+
+function findScrollableAncestor(element: HTMLElement, _root: HTMLElement | null) {
+  let current: HTMLElement | null = element.parentElement;
+  while (current && current !== document.body) {
+    const style = window.getComputedStyle(current);
+    const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
+    if (canScrollY && current.scrollHeight > current.clientHeight) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+  return null;
+}
+
+function getOffsetWithinScroller(element: HTMLElement, scroller: HTMLElement) {
+  const elementRect = element.getBoundingClientRect();
+  const scrollerRect = scroller.getBoundingClientRect();
+  return elementRect.top - scrollerRect.top + scroller.scrollTop;
 }
 
 function getMarkdownParentDir(sourcePath: string): string {
