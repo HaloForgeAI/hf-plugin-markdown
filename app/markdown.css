@@ -12,8 +12,8 @@
   --hf-md-toolbar-hover: color-mix(in srgb, var(--hf-md-surface) 72%, var(--hf-md-primary) 12%);
   --hf-md-code-bg: color-mix(in srgb, var(--hf-md-surface) 72%, var(--hf-md-background));
   --hf-md-code-fg: var(--hf-md-foreground);
-  --hf-md-inline-code-bg: color-mix(in srgb, var(--hf-md-surface) 76%, transparent);
-  --hf-md-inline-code-fg: color-mix(in srgb, var(--hf-md-foreground) 86%, var(--hf-md-primary));
+  --hf-md-inline-code-bg: transparent;
+  --hf-md-inline-code-fg: var(--hf-md-code-fg);
   --hf-md-hljs-fg: #24292e;
   --hf-md-hljs-keyword: #d73a49;
   --hf-md-hljs-title: #6f42c1;
@@ -47,8 +47,8 @@
   --hf-md-toolbar-hover: color-mix(in srgb, white 80%, var(--hf-md-primary) 12%);
   --hf-md-code-bg: #f5f8ff;
   --hf-md-code-fg: #24292e;
-  --hf-md-inline-code-bg: color-mix(in srgb, #eef4ff 86%, var(--hf-md-primary) 4%);
-  --hf-md-inline-code-fg: color-mix(in srgb, #102033 82%, var(--hf-md-primary));
+  --hf-md-inline-code-bg: transparent;
+  --hf-md-inline-code-fg: var(--hf-md-code-fg);
   --hf-md-table-head-bg: color-mix(in srgb, white 78%, var(--hf-md-surface));
   --hf-md-table-cell-bg: color-mix(in srgb, white 90%, var(--hf-md-background));
   --hf-md-table-alt-bg: color-mix(in srgb, var(--hf-md-surface) 38%, white);
@@ -62,8 +62,8 @@
   --hf-md-border: var(--color-border, var(--hf-border, #2b2b2f));
   --hf-md-code-bg: #0d1117;
   --hf-md-code-fg: #c9d1d9;
-  --hf-md-inline-code-bg: color-mix(in srgb, var(--hf-md-surface) 70%, #0d1117);
-  --hf-md-inline-code-fg: color-mix(in srgb, #c9d1d9 82%, var(--hf-md-primary));
+  --hf-md-inline-code-bg: transparent;
+  --hf-md-inline-code-fg: var(--hf-md-code-fg);
   --hf-md-hljs-fg: #c9d1d9;
   --hf-md-hljs-keyword: #ff7b72;
   --hf-md-hljs-title: #d2a8ff;
@@ -190,14 +190,19 @@
   margin: 1.75em 0;
 }
 
-.markdown-body :where(:not(pre) > code) {
-  border: 1px solid color-mix(in srgb, var(--hf-md-border) 80%, transparent);
-  border-radius: 5px;
-  background: var(--hf-md-inline-code-bg);
-  color: var(--hf-md-inline-code-fg);
+.markdown-body :where(:not(pre) > code),
+.hf-markdown-editor .vditor-reset :where(:not(pre) > code) {
+  border: 0;
+  border-radius: 3px;
+  background: var(--hf-md-inline-code-bg) !important;
+  background-color: var(--hf-md-inline-code-bg) !important;
+  box-shadow: none;
+  color: var(--hf-md-inline-code-fg) !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 0.88em;
-  padding: 0.13em 0.36em;
+  font-size: 0.92em;
+  line-height: 1.35;
+  letter-spacing: 0;
+  padding: 0 0.12em;
 }
 
 .markdown-body pre,
@@ -603,17 +608,6 @@
 .hf-markdown-editor .vditor-reset a:hover {
   color: color-mix(in srgb, var(--hf-md-primary) 82%, var(--hf-md-foreground));
   text-decoration-color: currentColor;
-}
-
-.hf-markdown-editor .vditor-reset :where(:not(pre) > code) {
-  border: 1px solid color-mix(in srgb, var(--hf-md-border) 80%, transparent);
-  border-radius: 5px;
-  background: var(--hf-md-inline-code-bg) !important;
-  color: var(--hf-md-inline-code-fg) !important;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 0.88em;
-  letter-spacing: 0;
-  padding: 0.13em 0.36em;
 }
 
 .hf-markdown-editor .vditor-reset table {

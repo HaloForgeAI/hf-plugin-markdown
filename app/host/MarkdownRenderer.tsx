@@ -283,27 +283,84 @@ function getMarkdownParentDir(sourcePath: string): string {
   return lastSlash < 0 ? "" : normalized.slice(0, lastSlash);
 }
 
+function decodePath(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 function toFileUrl(filePath: string): URL {
-  const normalizedPath = filePath.replace(/\\/g, "/");
-  const pathname = normalizedPath.startsWith("/") ? normalizedPath : `/${normalizedPath}`;
+  const normalizedPath = decodePath(filePath.trim()).replace(/\\/g, "/");
+  if (normalizedPath.startsWith("//")) {
+    const slashIndex = normalizedPath.indexOf("/", 2);
+    const host = slashIndex < 0 ? normalizedPath.slice(2) : normalizedPath.slice(2, slashIndex);
+    const pathname = slashIndex < 0 ? "/" : normalizedPath.slice(slashIndex);
+    const url = new URL(`file://${host || ""}/`);
+    url.pathname = pathname;
+    return url;
+  }
+
+  const pathname = /^[A-Za-z]:\//.test(normalizedPath)
+    ? `/${normalizedPath}`
+    : normalizedPath.startsWith("/")
+      ? normalizedPath
+      : `/${normalizedPath}`;
   const url = new URL("file:///");
   url.pathname = pathname;
   return url;
 }
 
 function isAbsoluteLocalPath(value: string): boolean {
-  return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value);
+  return (
+    (value.startsWith("/") && !value.startsWith("//")) ||
+    /^[A-Za-z]:[\\/]/.test(value) ||
+    /^\\\\/.test(value)
+  );
 }
 
 function isSupportedExternalProtocol(protocol: string): boolean {
   return protocol === "file:" || protocol === "http:" || protocol === "https:" || protocol === "mailto:" || protocol === "tel:";
 }
 
+function splitPathSuffix(value: string): { path: string; suffix: string } {
+  const suffixIndex = value.search(/[?#]/);
+  if (suffixIndex < 0) {
+    return { path: value, suffix: "" };
+  }
+  return {
+    path: value.slice(0, suffixIndex),
+    suffix: value.slice(suffixIndex),
+  };
+}
+
+function fileUrlToLocalPath(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "file:") return undefined;
+    const pathname = decodePath(url.pathname).replace(/^\/([A-Za-z]:\/)/, "$1");
+    return url.hostname && url.hostname !== "localhost" ? `//${url.hostname}${pathname}` : pathname;
+  } catch {
+    return undefined;
+  }
+}
+
+function convertLocalAssetSrc(filePath: string, suffix = ""): string {
+  const normalizedPath = decodePath(filePath);
+  try {
+    return `${convertFileSrc(normalizedPath)}${suffix}`;
+  } catch {
+    return `${toFileUrl(normalizedPath).toString()}${suffix}`;
+  }
+}
+
 function resolveMarkdownLink(href: string | undefined, sourcePath?: string): string | undefined {
   if (!href) return undefined;
 
-  if (isAbsoluteLocalPath(href)) {
-    return toFileUrl(href).toString();
+  const localHref = splitPathSuffix(href.trim());
+  if (isAbsoluteLocalPath(localHref.path)) {
+    return `${toFileUrl(localHref.path).toString()}${localHref.suffix}`;
   }
 
   try {
@@ -325,20 +382,22 @@ function resolveMarkdownAssetSrc(rawSrc: string | undefined, sourcePath?: string
   if (!rawSrc) return rawSrc;
   const trimmed = rawSrc.trim();
   if (!trimmed) return rawSrc;
-  if (trimmed.startsWith("file:")) {
+
+  if (/^file:/i.test(trimmed)) {
     try {
-      return convertFileSrc(decodeURIComponent(new URL(trimmed).pathname));
+      const url = new URL(trimmed);
+      const filePath = fileUrlToLocalPath(trimmed);
+      return filePath ? convertLocalAssetSrc(filePath, `${url.search}${url.hash}`) : trimmed;
     } catch {
       return trimmed;
     }
   }
-  if (isAbsoluteLocalPath(trimmed)) {
-    try {
-      return convertFileSrc(trimmed);
-    } catch {
-      return trimmed;
-    }
+
+  const localSrc = splitPathSuffix(trimmed);
+  if (isAbsoluteLocalPath(localSrc.path)) {
+    return convertLocalAssetSrc(localSrc.path, localSrc.suffix);
   }
+
   if (
     ABSOLUTE_URL_RE.test(trimmed) ||
     trimmed.startsWith("//") ||
@@ -352,18 +411,12 @@ function resolveMarkdownAssetSrc(rawSrc: string | undefined, sourcePath?: string
 
   const parentDir = getMarkdownParentDir(sourcePath);
   if (!parentDir) return trimmed;
-  const decoded = (() => {
-    try {
-      return decodeURIComponent(trimmed);
-    } catch {
-      return trimmed;
-    }
-  })();
-  const cleaned = decoded.replace(/\\/g, "/").replace(/^\.\//, "");
-  const joined = `${parentDir}/${cleaned}`.replace(/\/+/g, "/");
 
   try {
-    return convertFileSrc(joined);
+    const baseUrl = new URL("./", toFileUrl(sourcePath));
+    const resolvedUrl = new URL(localSrc.path.replace(/\\/g, "/"), baseUrl);
+    const filePath = fileUrlToLocalPath(resolvedUrl.toString());
+    return filePath ? convertLocalAssetSrc(filePath, localSrc.suffix) : trimmed;
   } catch {
     return trimmed;
   }
