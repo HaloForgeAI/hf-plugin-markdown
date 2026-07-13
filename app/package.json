@@ -1,6 +1,6 @@
 {
   "name": "@hf-plugin-markdown/frontend",
-  "version": "0.2.25",
+  "version": "0.2.26",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "dev": "node scripts/generate-vditor-assets.mjs && vite build --watch"
   },
   "dependencies": {
-    "@haloforge/plugin-sdk": "^0.2.13",
+    "@haloforge/plugin-sdk": "0.2.17",
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-opener": "^2.0.0",
     "clsx": "^2.1.1",
