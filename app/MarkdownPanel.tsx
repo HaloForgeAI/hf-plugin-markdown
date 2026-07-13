@@ -10,7 +10,7 @@ import {
 import { clearPendingPluginDeepLink, useHostEvent, usePluginDeepLink, usePluginWindowTitle } from "@haloforge/plugin-sdk";
 import clsx from "clsx";
 import { useSidebarResize } from "./host/useSidebarResize";
-import { RefreshCw, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { MarkdownRenderer } from "./host/MarkdownRenderer";
 import { useAppStore } from "./host/appStore";
 import { useAIChatStore } from "./host/aichatStore";
@@ -24,6 +24,7 @@ import { AssistantSidebar } from "./markdown/AssistantSidebar";
 import { MarkdownHeader } from "./markdown/MarkdownHeader";
 import { ReaderSidebar } from "./markdown/ReaderSidebar";
 import { FindBar } from "./markdown/FindBar";
+import { ImageLightbox } from "./markdown/ImageLightbox";
 import { applyFindHighlights, clearFindHighlights, computeMatchRanges, findApiSupported, scrollRangeIntoView } from "./markdown/findHighlight";
 import type {
   AssistantIntent,
@@ -544,19 +545,6 @@ export function MarkdownPanel() {
     root.addEventListener("click", handleImageClick, true);
     return () => root.removeEventListener("click", handleImageClick, true);
   }, []);
-
-  useEffect(() => {
-    if (!previewImageSrc) return;
-    const handleKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        setPreviewImageSrc(null);
-      }
-    };
-    window.addEventListener("keydown", handleKey, true);
-    return () => window.removeEventListener("keydown", handleKey, true);
-  }, [previewImageSrc]);
 
   const handleEditorContentChange = useCallback((content: string) => {
     setDocument((previous) => {
@@ -1263,22 +1251,11 @@ export function MarkdownPanel() {
       />
 
       {previewImageSrc && (
-        <div className="hf-md-lightbox" onClick={() => setPreviewImageSrc(null)}>
-          <img
-            src={previewImageSrc}
-            alt=""
-            className="hf-md-lightbox__img"
-            onClick={(event) => event.stopPropagation()}
-          />
-          <button
-            type="button"
-            title={t("markdown.reader.cancel")}
-            onClick={() => setPreviewImageSrc(null)}
-            className="hf-md-lightbox__close"
-          >
-            <X size={18} />
-          </button>
-        </div>
+        <ImageLightbox
+          src={previewImageSrc}
+          onClose={() => setPreviewImageSrc(null)}
+          t={t}
+        />
       )}
 
       {pendingAction && (

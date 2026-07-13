@@ -169,8 +169,8 @@ function rewriteRenderedDom(root: HTMLElement, sourcePath?: string) {
     const attrSrc = img.getAttribute("src")?.trim();
     const dataSrc = img.getAttribute("data-src")?.trim();
     const raw = img.dataset.rawSrc
-      ?? (attrSrc && attrSrc.length > 0 ? attrSrc : undefined)
-      ?? (dataSrc && dataSrc.length > 0 ? dataSrc : undefined);
+      ?? (dataSrc && dataSrc.length > 0 ? dataSrc : undefined)
+      ?? (attrSrc && attrSrc.length > 0 ? attrSrc : undefined);
     if (!raw) return;
     if (!img.dataset.rawSrc) {
       img.dataset.rawSrc = raw;
@@ -350,7 +350,9 @@ function fileUrlToLocalPath(value: string): string | undefined {
   try {
     const url = new URL(value);
     if (url.protocol !== "file:") return undefined;
-    const pathname = decodePath(url.pathname).replace(/^\/([A-Za-z]:\/)/, "$1");
+    const pathname = decodePath(url.pathname)
+      .replace(/\\/g, "/")
+      .replace(/^\/([A-Za-z]:\/)/, "$1");
     return url.hostname && url.hostname !== "localhost" ? `//${url.hostname}${pathname}` : pathname;
   } catch {
     return undefined;
@@ -405,6 +407,10 @@ function resolveMarkdownAssetSrc(rawSrc: string | undefined, sourcePath?: string
   }
 
   const localSrc = splitPathSuffix(trimmed);
+  const decodedLocalPath = decodePath(localSrc.path);
+  if (isAbsoluteLocalPath(decodedLocalPath)) {
+    return convertLocalAssetSrc(decodedLocalPath, localSrc.suffix);
+  }
   if (isAbsoluteLocalPath(localSrc.path)) {
     return convertLocalAssetSrc(localSrc.path, localSrc.suffix);
   }

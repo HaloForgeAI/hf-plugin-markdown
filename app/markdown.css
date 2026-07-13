@@ -32,6 +32,8 @@
   --hf-md-table-cell-bg: color-mix(in srgb, var(--hf-md-background) 88%, var(--hf-md-surface));
   --hf-md-table-alt-bg: color-mix(in srgb, var(--hf-md-surface) 48%, var(--hf-md-background));
   --hf-md-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+  position: relative;
+  isolation: isolate;
 }
 
 .hf-markdown-panel--light {
@@ -1167,23 +1169,34 @@
 
 /* Image lightbox */
 .hf-md-lightbox {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 2147483002;
+  z-index: 80;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  overflow: hidden;
+  padding: 64px 24px 76px;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(6px);
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 .hf-md-lightbox__img {
-  max-height: 100%;
-  max-width: 100%;
+  max-height: calc(100% - 4px);
+  max-width: calc(100% - 4px);
   border-radius: 8px;
+  cursor: grab;
   object-fit: contain;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  transform-origin: center;
+  user-select: none;
+  will-change: transform;
+}
+
+.hf-md-lightbox__img.is-dragging {
+  cursor: grabbing;
 }
 
 .hf-md-lightbox__close {
@@ -1202,8 +1215,78 @@
   cursor: pointer;
 }
 
+.hf-md-lightbox__close,
+.hf-md-lightbox__toolbar button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(18, 18, 20, 0.78);
+  color: #fff;
+  backdrop-filter: blur(12px);
+}
+
 .hf-md-lightbox__close:hover {
   background: rgba(255, 255, 255, 0.22);
+}
+
+.hf-md-lightbox__toolbar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 4px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(18, 18, 20, 0.78);
+  color: #fff;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(12px);
+}
+
+.hf-md-lightbox__toolbar button {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.hf-md-lightbox__toolbar button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.hf-md-lightbox__toolbar button:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+
+.hf-md-lightbox__scale {
+  min-width: 52px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+@media (max-width: 720px) {
+  .hf-md-lightbox {
+    padding: 56px 12px 68px;
+  }
+
+  .hf-md-lightbox__close {
+    top: 12px;
+    right: 12px;
+  }
+
+  .hf-md-lightbox__toolbar {
+    bottom: 12px;
+  }
 }
 
 /* In-document find bar + highlights */
