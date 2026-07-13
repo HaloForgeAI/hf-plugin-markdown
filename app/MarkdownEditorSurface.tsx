@@ -1,6 +1,11 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import clsx from "clsx";
+import {
+  AlignCenter, AlignLeft, AlignRight, Bold, ClipboardPaste, Code, Copy, Heading,
+  Image as ImageIcon, Italic, Link2, List, ListChecks, ListOrdered, Quote, Scissors,
+  Strikethrough, Table as TableIcon, Trash2,
+} from "lucide-react";
 import "./vditorLocalAssets";
 import Vditor from "./vendor/vditor/dist/index.js";
 import "./vendor/vditor/dist/index.css";
@@ -8,13 +13,18 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getMarkdownCodeTheme, queueMarkdownCodeHighlight } from "./markdown/codeHighlight";
 import type { MarkdownHeading } from "./markdown/types";
-import { markdownInvoke } from "./markdown/utils";
+import { isUntitledPath, markdownInvoke } from "./markdown/utils";
+import { useMarkdownT } from "./i18n";
 import { VDITOR_CDN, VDITOR_ZH_CN_I18N } from "./vditorConfig";
+import { EditorContextMenu, LinkEditorPopover, TableGridPicker, type ContextMenuItem } from "./markdown/EditorContextMenu";
+import {
+  buildTableMarkdown, domDeleteColumn, domDeleteRow, domInsertColumn, domInsertRow,
+  domSetColumnAlign, findCellFromNode, findTableFromNode, triggerToolbarAction,
+} from "./markdown/editorActions";
 
 type VditorInstance = InstanceType<typeof Vditor>;
 type ToolbarItem = string | { name: string; tipPosition: string };
 type EditorMode = "ir" | "sv" | "wysiwyg";
-type CodeLanguageChangeHandler = (block: HTMLElement, language: string) => void;
 
 type VditorInternal = {
   currentMode?: EditorMode;
@@ -25,13 +35,6 @@ type VditorInternal = {
   preview?: { element: HTMLElement; previewElement: HTMLElement };
   lute?: { VditorDOM2Md?: (html: string) => string };
   options?: { customRenders?: Array<{ language: string; render: (element: HTMLElement, vditor: unknown) => void }> };
-};
-
-type HighlightJsGlobal = Window & {
-  hljs?: {
-    listLanguages?: () => string[];
-    getLanguage?: (language: string) => unknown;
-  };
 };
 
 const SPECIAL_RENDER_LANGUAGES = new Set([
@@ -46,47 +49,6 @@ const SPECIAL_RENDER_LANGUAGES = new Set([
   "plantuml",
   "smiles",
 ]);
-
-const CODE_LANGUAGE_OPTIONS = uniqueSortedLanguages([
-  "plaintext", "text", "txt",
-  "1c", "abnf", "accesslog", "actionscript", "ada", "angelscript", "apache", "applescript",
-  "arcade", "arduino", "armasm", "asciidoc", "aspectj", "autohotkey", "autoit", "avrasm",
-  "awk", "axapta", "basic", "bnf", "brainfuck",
-  "bash", "shell", "sh", "zsh", "powershell", "ps1", "bat", "batch", "cmd", "console",
-  "cal", "capnproto", "ceylon", "clean", "coffeescript", "cos", "coq", "crmsh", "csp",
-  "javascript", "js", "jsx", "typescript", "ts", "tsx",
-  "html", "xml", "xhtml", "xquery", "xpath", "css", "scss", "sass", "less", "stylus",
-  "json", "jsonc", "yaml", "yml", "toml", "ini", "properties", "dotenv",
-  "markdown", "md", "asciidoc", "latex", "tex", "bibtex",
-  "python", "py", "java", "kotlin", "kts", "scala", "groovy",
-  "c", "cpp", "c++", "cxx", "h", "hpp", "objectivec", "objc",
-  "csharp", "cs", "c#", "fsharp", "fs",
-  "go", "golang", "rust", "rs", "swift", "php", "ruby", "rb", "dart",
-  "r", "matlab", "julia", "julia-repl", "lua", "perl", "elixir", "erlang", "clojure",
-  "haskell", "ocaml", "nim", "zig", "crystal", "d", "delphi", "fortran", "lisp",
-  "scheme", "smalltalk", "sml", "vala", "vbnet", "vbscript",
-  "sql", "mysql", "pgsql", "postgresql", "plsql", "graphql", "cypher", "n1ql",
-  "dockerfile", "docker", "nginx", "apache", "makefile", "cmake", "gradle", "gams",
-  "terraform", "hcl", "tf", "nix", "proto", "protobuf", "thrift", "capnproto",
-  "llvm", "mipsasm", "wasm", "x86asm", "verilog", "vhdl",
-  "solidity", "sol", "yul", "abap", "hlsl", "glsl", "wgsl",
-  "diff", "patch", "http", "regexp", "regex", "dns", "fix", "gcode", "gherkin",
-  "handlebars", "hbs", "haml", "django", "twig", "erb", "ejs", "dust",
-  "leaf", "livescript", "moonscript", "qml", "routeros", "vim", "stan", "stata",
-  "sas", "scilab", "stata", "tap", "tcl", "tp", "vbscript-html",
-  "mermaid", "plantuml", "math", "mindmap", "markmap", "flowchart", "graphviz", "echarts", "abc", "smiles",
-]);
-
-const CODE_LANGUAGE_ALIASES: Record<string, string> = {
-  "c++": "cpp",
-  "c#": "csharp",
-  "golang": "go",
-  "postgresql": "pgsql",
-  "shell": "bash",
-  "sh": "bash",
-  "text": "plaintext",
-  "txt": "plaintext",
-};
 
 interface MarkdownEditorSurfaceProps {
   value: string;
@@ -133,9 +95,17 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
   onSelectionChange,
   onActiveHeadingChange,
 }, ref) {
+  const t = useMarkdownT();
   const surfaceStyle = {
     "--hf-md-font-scale": String(fontScale),
   } as CSSProperties;
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const [gridPicker, setGridPicker] = useState<{ x: number; y: number } | null>(null);
+  const [linkEditor, setLinkEditor] = useState<{ x: number; y: number; text: string; href: string } | null>(null);
+  const savedRangeRef = useRef<Range | null>(null);
+  const contextCellRef = useRef<HTMLTableCellElement | null>(null);
+  const contextAnchorRef = useRef<HTMLAnchorElement | null>(null);
 
   const onChangeRef = useRef(onChange);
   const onSelectionChangeRef = useRef(onSelectionChange);
@@ -201,7 +171,11 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
     isVditorReadyRef.current = false;
     pendingInitialValueRef.current = valueRef.current;
     const isSplitMode = variant === "split";
-    const editorMode: EditorMode = isSplitMode ? "sv" : "wysiwyg";
+    // Standalone "write" mode uses IR (instant rendering) — vditor's Typora-like
+    // model where a node's raw markers (`[text](url)`, code fences, emphasis)
+    // are revealed only while the caret is on that node (via expandMarker) and
+    // render everywhere else. Split mode stays on the source (sv) view.
+    const editorMode: EditorMode = isSplitMode ? "sv" : "ir";
     const activeListenerElements: HTMLElement[] = [];
 
     const editor = new Vditor(host, {
@@ -247,7 +221,9 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
         click: () => undefined,
       },
       image: {
-        isPreview: true,
+        // The panel provides a unified click-to-preview lightbox across all
+        // three modes, so vditor's own image preview stays disabled.
+        isPreview: false,
       },
       toolbar: getHaloForgeToolbarConfig(),
       toolbarConfig: {
@@ -317,6 +293,9 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
           if (!sourcePath) {
             return "No markdown document is open.";
           }
+          if (isUntitledPath(sourcePath)) {
+            return t("markdown.editor.saveBeforeImage");
+          }
           try {
             for (const file of files) {
               const fileName = file.name || "image.png";
@@ -374,6 +353,49 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       selectionGestureUntilRef.current = Date.now() + 600;
     };
 
+    // Belt-and-suspenders keyboard navigation for vditor's code-fence language
+    // hint. vditor binds its own Up/Down/Enter handling to `vditor.ir.element`
+    // in the bubble phase, but we drive it ourselves in the capture phase so
+    // hint navigation is reliable regardless of focus/composition quirks that
+    // can keep the native handler from ever seeing the keydown. Only engages
+    // while the real language hint is visible (identified by being a direct
+    // child of `.vditor-content`, unlike the toolbar's own dropdown panels
+    // which share the same `.vditor-hint` class but live under `.vditor-toolbar`)
+    // and defers to vditor's own handling for every other key.
+    const getLanguageHintElement = (): HTMLElement | null => {
+      const hint = host.querySelector<HTMLElement>(".vditor-content > .vditor-hint");
+      if (!hint || getComputedStyle(hint).display === "none") return null;
+      return hint;
+    };
+    const handleHintKeydown = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp" && event.key !== "Enter") return;
+      if (event.isComposing) return;
+      const hint = getLanguageHintElement();
+      if (!hint) return;
+      const buttons = Array.from(hint.querySelectorAll<HTMLButtonElement>("button"));
+      if (buttons.length === 0) return;
+
+      if (event.key === "Enter") {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const current = hint.querySelector<HTMLButtonElement>(".vditor-hint--current") ?? buttons[0];
+        event.preventDefault();
+        event.stopPropagation();
+        current.click();
+        return;
+      }
+
+      const currentIndex = buttons.findIndex((button) => button.classList.contains("vditor-hint--current"));
+      const nextIndex = event.key === "ArrowDown"
+        ? (currentIndex + 1) % buttons.length
+        : (currentIndex - 1 + buttons.length) % buttons.length;
+      event.preventDefault();
+      event.stopPropagation();
+      buttons.forEach((button) => button.classList.remove("vditor-hint--current"));
+      buttons[nextIndex].classList.add("vditor-hint--current");
+      buttons[nextIndex].scrollIntoView({ block: "nearest" });
+    };
+    host.addEventListener("keydown", handleHintKeydown, true);
+
     host.addEventListener("click", handleClick, true);
     host.addEventListener("dblclick", handleSelectionGesture, true);
     host.addEventListener("selectstart", handleSelectionGesture, true);
@@ -402,6 +424,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
     });
 
     return () => {
+      host.removeEventListener("keydown", handleHintKeydown, true);
       host.removeEventListener("click", handleClick, true);
       host.removeEventListener("dblclick", handleSelectionGesture, true);
       host.removeEventListener("selectstart", handleSelectionGesture, true);
@@ -563,11 +586,12 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       }
     });
 
-    host.querySelectorAll<HTMLElement>(".vditor-ir__node--hidden").forEach((node) => {
-      node.classList.remove("vditor-ir__node--hidden");
-    });
+    // NOTE: do NOT strip `.vditor-ir__node--hidden` here. That class is how IR
+    // hides a node's raw markers when the caret isn't on it; vditor toggles it
+    // via expandMarker so markers reveal near the caret and render otherwise
+    // (Typora behavior). Force-removing it made every marker always visible.
 
-    normalizeEditableCodeBlocks(host, handleInlineCodeLanguageChange);
+    normalizeEditableCodeBlocks(host);
   };
 
   const queueEditorHighlight = (host: HTMLElement) => {
@@ -603,6 +627,248 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
     });
   };
 
+  const restoreEditorSelection = () => {
+    const range = savedRangeRef.current;
+    vditorRef.current?.focus();
+    if (range) {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      try {
+        selection?.addRange(range);
+      } catch {
+        // Range can be stale if the DOM changed; ignore.
+      }
+    }
+  };
+
+  const resyncEditorFromDom = () => {
+    const editor = vditorRef.current;
+    const host = vditorHostRef.current;
+    if (!editor || !isVditorReadyRef.current) return;
+    const markdown = editor.getValue();
+    editor.setValue(markdown);
+    valueRef.current = markdown;
+    onChangeRef.current(markdown);
+    if (host) {
+      window.requestAnimationFrame(() => {
+        normalizeVditorRenderedDom(host);
+        renderPendingVditorPreviews(host);
+        queueEditorHighlight(host);
+        emitActiveHeadingChange();
+      });
+    }
+  };
+
+  const runToolbarAction = (type: string) => {
+    const host = vditorHostRef.current;
+    if (!host) return;
+    restoreEditorSelection();
+    triggerToolbarAction(host, type);
+    window.requestAnimationFrame(() => {
+      normalizeVditorRenderedDom(host);
+      queueEditorHighlight(host);
+    });
+  };
+
+  const insertTableAt = (rows: number, cols: number) => {
+    const editor = vditorRef.current;
+    if (!editor) return;
+    restoreEditorSelection();
+    editor.insertValue(buildTableMarkdown(rows, cols));
+    const host = vditorHostRef.current;
+    if (host) {
+      window.requestAnimationFrame(() => {
+        normalizeVditorRenderedDom(host);
+        queueEditorHighlight(host);
+        emitActiveHeadingChange();
+      });
+    }
+  };
+
+  const insertImageViaPicker = () => {
+    const sourcePath = documentPathRef.current;
+    if (!sourcePath || isUntitledPath(sourcePath)) {
+      vditorRef.current?.tip(t("markdown.editor.saveBeforeImage"), 3000);
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.style.display = "none";
+    input.addEventListener("change", async () => {
+      const files = Array.from(input.files ?? []);
+      input.remove();
+      const sourcePath = documentPathRef.current;
+      const editor = vditorRef.current;
+      if (!sourcePath || !editor) return;
+      for (const file of files) {
+        try {
+          const fileName = file.name || "image.png";
+          const dataBase64 = await blobToBase64(file);
+          const result = await markdownInvoke<{ path: string; relativePath?: string }>("md_save_image", {
+            sourcePath,
+            dataBase64,
+            fileName,
+          });
+          editor.insertValue(`\n![${fileName}](${(result.relativePath ?? result.path).replace(/\\/g, "/")})\n`);
+        } catch (error) {
+          console.error("Failed to insert markdown image", error);
+        }
+      }
+    });
+    document.body.appendChild(input);
+    input.click();
+  };
+
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        restoreEditorSelection();
+        vditorRef.current?.insertValue(text);
+      }
+    } catch (error) {
+      console.error("Failed to paste from clipboard", error);
+    }
+  };
+
+  type TableOp = "rowAbove" | "rowBelow" | "colLeft" | "colRight" | "delRow" | "delCol" | "alignLeft" | "alignCenter" | "alignRight";
+
+  const runTableOp = (op: TableOp) => {
+    const cell = contextCellRef.current;
+    const table = cell ? findTableFromNode(cell) : null;
+    if (!cell || !table) return;
+    switch (op) {
+      case "rowAbove": domInsertRow(table, cell, "above"); break;
+      case "rowBelow": domInsertRow(table, cell, "below"); break;
+      case "colLeft": domInsertColumn(table, cell, "left"); break;
+      case "colRight": domInsertColumn(table, cell, "right"); break;
+      case "delRow": if (!domDeleteRow(table, cell)) return; break;
+      case "delCol": if (!domDeleteColumn(table, cell)) return; break;
+      case "alignLeft": domSetColumnAlign(table, cell, "left"); break;
+      case "alignCenter": domSetColumnAlign(table, cell, "center"); break;
+      case "alignRight": domSetColumnAlign(table, cell, "right"); break;
+    }
+    resyncEditorFromDom();
+  };
+
+  const applyLinkEdit = (text: string, href: string) => {
+    const anchor = contextAnchorRef.current;
+    setLinkEditor(null);
+    if (!anchor) return;
+    anchor.textContent = text || href || anchor.textContent || "";
+    if (href) {
+      anchor.setAttribute("href", href);
+    } else {
+      anchor.removeAttribute("href");
+    }
+    resyncEditorFromDom();
+  };
+
+  const buildContextMenuItems = (
+    cell: HTMLTableCellElement | null,
+    anchor: HTMLAnchorElement | null,
+    hasSelection: boolean,
+    x: number,
+    y: number,
+  ): ContextMenuItem[] => {
+    const items: ContextMenuItem[] = [];
+
+    if (anchor) {
+      items.push(
+        {
+          id: "edit-link",
+          label: t("markdown.editor.ctx.editLink"),
+          icon: <Link2 size={14} />,
+          onSelect: () => setLinkEditor({
+            x,
+            y,
+            text: anchor.textContent ?? "",
+            href: anchor.getAttribute("href") ?? "",
+          }),
+        },
+        { id: "sep-link", separator: true },
+      );
+    }
+
+    if (cell) {
+      items.push(
+        { id: "row-above", label: t("markdown.editor.ctx.insertRowAbove"), icon: <ListOrdered size={14} />, onSelect: () => runTableOp("rowAbove") },
+        { id: "row-below", label: t("markdown.editor.ctx.insertRowBelow"), icon: <ListOrdered size={14} />, onSelect: () => runTableOp("rowBelow") },
+        { id: "col-left", label: t("markdown.editor.ctx.insertColLeft"), icon: <List size={14} />, onSelect: () => runTableOp("colLeft") },
+        { id: "col-right", label: t("markdown.editor.ctx.insertColRight"), icon: <List size={14} />, onSelect: () => runTableOp("colRight") },
+        { id: "align-left", label: t("markdown.editor.ctx.alignLeft"), icon: <AlignLeft size={14} />, onSelect: () => runTableOp("alignLeft") },
+        { id: "align-center", label: t("markdown.editor.ctx.alignCenter"), icon: <AlignCenter size={14} />, onSelect: () => runTableOp("alignCenter") },
+        { id: "align-right", label: t("markdown.editor.ctx.alignRight"), icon: <AlignRight size={14} />, onSelect: () => runTableOp("alignRight") },
+        { id: "del-row", label: t("markdown.editor.ctx.deleteRow"), icon: <Trash2 size={14} />, danger: true, onSelect: () => runTableOp("delRow") },
+        { id: "del-col", label: t("markdown.editor.ctx.deleteCol"), icon: <Trash2 size={14} />, danger: true, onSelect: () => runTableOp("delCol") },
+        { id: "sep-table", separator: true },
+      );
+    }
+
+    items.push(
+      { id: "bold", label: t("markdown.editor.ctx.bold"), icon: <Bold size={14} />, disabled: !hasSelection, onSelect: () => runToolbarAction("bold") },
+      { id: "italic", label: t("markdown.editor.ctx.italic"), icon: <Italic size={14} />, disabled: !hasSelection, onSelect: () => runToolbarAction("italic") },
+      { id: "strike", label: t("markdown.editor.ctx.strike"), icon: <Strikethrough size={14} />, disabled: !hasSelection, onSelect: () => runToolbarAction("strike") },
+      { id: "inline-code", label: t("markdown.editor.ctx.inlineCode"), icon: <Code size={14} />, disabled: !hasSelection, onSelect: () => runToolbarAction("inline-code") },
+      { id: "heading", label: t("markdown.editor.ctx.heading"), icon: <Heading size={14} />, onSelect: () => runToolbarAction("headings") },
+      { id: "sep-format", separator: true },
+      { id: "insert-table", label: t("markdown.editor.ctx.insertTable"), icon: <TableIcon size={14} />, onSelect: () => setGridPicker({ x, y }) },
+      { id: "insert-image", label: t("markdown.editor.ctx.insertImage"), icon: <ImageIcon size={14} />, onSelect: insertImageViaPicker },
+      { id: "insert-link", label: t("markdown.editor.ctx.insertLink"), icon: <Link2 size={14} />, onSelect: () => runToolbarAction("link") },
+      { id: "insert-quote", label: t("markdown.editor.ctx.insertQuote"), icon: <Quote size={14} />, onSelect: () => runToolbarAction("quote") },
+      { id: "insert-check", label: t("markdown.editor.ctx.insertCheck"), icon: <ListChecks size={14} />, onSelect: () => runToolbarAction("check") },
+      { id: "sep-insert", separator: true },
+      { id: "cut", label: t("markdown.editor.ctx.cut"), icon: <Scissors size={14} />, disabled: !hasSelection, onSelect: () => { restoreEditorSelection(); document.execCommand("cut"); } },
+      { id: "copy", label: t("markdown.editor.ctx.copy"), icon: <Copy size={14} />, disabled: !hasSelection, onSelect: () => { restoreEditorSelection(); document.execCommand("copy"); } },
+      { id: "paste", label: t("markdown.editor.ctx.paste"), icon: <ClipboardPaste size={14} />, onSelect: () => { void pasteFromClipboard(); } },
+    );
+
+    return items;
+  };
+
+  const openEditorContextMenu = (event: MouseEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    if (target.closest(".vditor-toolbar") || target.closest(".hf-code-language-inline") || target.closest("input, textarea")) {
+      return;
+    }
+    event.preventDefault();
+    const selection = window.getSelection();
+    savedRangeRef.current = selection && selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    const hasSelection = Boolean(savedRangeRef.current && !savedRangeRef.current.collapsed);
+    const cell = findCellFromNode(target);
+    contextCellRef.current = cell;
+    const anchor = target.closest<HTMLAnchorElement>("a[href]");
+    contextAnchorRef.current = anchor ?? null;
+    setContextMenu({ x: event.clientX, y: event.clientY, items: buildContextMenuItems(cell, anchor ?? null, hasSelection, event.clientX, event.clientY) });
+  };
+
+  const interceptToolbarTableClick = (event: MouseEvent) => {
+    const target = event.target as HTMLElement | null;
+    const tableButton = target?.closest?.<HTMLElement>('.vditor-toolbar [data-type="table"]');
+    if (!tableButton) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = tableButton.getBoundingClientRect();
+    const selection = window.getSelection();
+    savedRangeRef.current = selection && selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    setGridPicker({ x: rect.left, y: rect.bottom + 6 });
+  };
+
+  useEffect(() => {
+    const host = vditorHostRef.current;
+    if (!host) return;
+    host.addEventListener("contextmenu", openEditorContextMenu);
+    host.addEventListener("click", interceptToolbarTableClick, true);
+    return () => {
+      host.removeEventListener("contextmenu", openEditorContextMenu);
+      host.removeEventListener("click", interceptToolbarTableClick, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function shouldIgnoreSelectionOnlyInput(nextValue: string) {
     if (Date.now() > selectionGestureUntilRef.current) return false;
     const internal = getInternalVditor();
@@ -625,24 +891,6 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
     });
   }
 
-  function handleInlineCodeLanguageChange(block: HTMLElement, language: string) {
-    const normalizedLanguage = normalizeCodeLanguageInput(language);
-
-    setEditableCodeBlockLanguage(block, normalizedLanguage);
-    const editor = vditorRef.current;
-    const markdown = editor?.getValue();
-    if (typeof markdown === "string") {
-      valueRef.current = markdown;
-      onChangeRef.current(markdown);
-    }
-    window.requestAnimationFrame(() => {
-      if (!vditorHostRef.current) return;
-      normalizeVditorRenderedDom(vditorHostRef.current);
-      renderPendingVditorPreviews(vditorHostRef.current);
-      queueEditorHighlight(vditorHostRef.current);
-    });
-  }
-
   return (
     <div
       className={clsx(
@@ -652,6 +900,37 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       style={surfaceStyle}
     >
       <div ref={vditorHostRef} className="hf-vditor-host h-full min-h-0" />
+      {contextMenu && (
+        <EditorContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+      {gridPicker && (
+        <TableGridPicker
+          x={gridPicker.x}
+          y={gridPicker.y}
+          t={t}
+          onClose={() => setGridPicker(null)}
+          onPick={(rows, cols) => {
+            setGridPicker(null);
+            insertTableAt(rows, cols);
+          }}
+        />
+      )}
+      {linkEditor && (
+        <LinkEditorPopover
+          x={linkEditor.x}
+          y={linkEditor.y}
+          initialText={linkEditor.text}
+          initialHref={linkEditor.href}
+          t={t}
+          onClose={() => setLinkEditor(null)}
+          onApply={applyLinkEdit}
+        />
+      )}
     </div>
   );
 });
@@ -921,7 +1200,12 @@ function getTextOffset(root: Node, targetNode: Node, targetNodeOffset: number) {
   return null;
 }
 
-function normalizeEditableCodeBlocks(host: HTMLElement, onLanguageChange: CodeLanguageChangeHandler) {
+// Toggle a wysiwyg code block between its editable source (`<pre>`) and its
+// highlighted preview so only one shows at a time. Without this, both the raw
+// source and the rendered preview render together (the code block appears as
+// two duplicate rows). The old inline language <input> control is intentionally
+// gone — vditor's native code block handles the language.
+function normalizeEditableCodeBlocks(host: HTMLElement) {
   host.querySelectorAll<HTMLElement>(".vditor-wysiwyg__block[data-type='code-block']").forEach((block) => {
     const sourcePre = block.querySelector<HTMLElement>(":scope > pre:first-child");
     const preview = block.querySelector<HTMLElement>(":scope > .vditor-wysiwyg__preview");
@@ -932,153 +1216,9 @@ function normalizeEditableCodeBlocks(host: HTMLElement, onLanguageChange: CodeLa
     preview.style.display = isEditing ? "none" : "";
     preview.setAttribute("aria-hidden", isEditing ? "true" : "false");
 
-    if (isEditing) {
-      ensureInlineCodeLanguageControl(block, sourcePre, onLanguageChange);
-    } else {
-      sourcePre.querySelector<HTMLElement>(":scope > .hf-code-language-inline")?.remove();
-    }
+    // Strip any legacy inline language control left over from older builds.
+    sourcePre.querySelector<HTMLElement>(":scope > .hf-code-language-inline")?.remove();
   });
-}
-
-function ensureInlineCodeLanguageControl(block: HTMLElement, sourcePre: HTMLElement, onLanguageChange: CodeLanguageChangeHandler) {
-  const ownerDocument = block.ownerDocument;
-  ensureCodeLanguageDatalist(ownerDocument);
-
-  let control = sourcePre.querySelector<HTMLElement>(":scope > .hf-code-language-inline");
-  if (!control) {
-    control = ownerDocument.createElement("span");
-    control.className = "hf-code-language-inline";
-    control.contentEditable = "false";
-    control.setAttribute("data-hf-transient", "true");
-
-    const input = ownerDocument.createElement("input");
-    input.className = "hf-code-language-input";
-    input.type = "text";
-    input.placeholder = "language";
-    input.setAttribute("aria-label", "Code block language");
-    input.setAttribute("list", "hf-code-language-options");
-    input.setAttribute("autocomplete", "off");
-    input.setAttribute("autocapitalize", "off");
-    input.setAttribute("spellcheck", "false");
-    bindInlineCodeLanguageInput(input, onLanguageChange);
-
-    control.appendChild(input);
-    sourcePre.appendChild(control);
-  }
-
-  const input = control.querySelector<HTMLInputElement>("input");
-  if (!input) return;
-  input.setAttribute("list", "hf-code-language-options");
-  if (ownerDocument.activeElement !== input) {
-    input.value = getEditableCodeBlockLanguage(block);
-  }
-}
-
-function bindInlineCodeLanguageInput(input: HTMLInputElement, onLanguageChange: CodeLanguageChangeHandler) {
-  if (input.dataset.hfLanguageInputBound === "true") return;
-  input.dataset.hfLanguageInputBound = "true";
-
-  const stopPropagation = (event: Event) => {
-    event.stopPropagation();
-  };
-
-  ["pointerdown", "mousedown", "mouseup", "click", "dblclick", "beforeinput", "paste", "compositionstart", "compositionupdate", "compositionend"].forEach((eventName) => {
-    input.addEventListener(eventName, stopPropagation);
-  });
-
-  input.addEventListener("input", (event) => {
-    event.stopPropagation();
-    const block = input.closest(".vditor-wysiwyg__block[data-type='code-block']");
-    if (block instanceof HTMLElement) {
-      onLanguageChange(block, input.value);
-    }
-  });
-
-  input.addEventListener("keydown", (event) => {
-    event.stopPropagation();
-    if (event.key === "Enter" || event.key === "Escape") {
-      event.preventDefault();
-      input.blur();
-      focusEditableCodeBlock(input);
-    }
-  });
-
-  input.addEventListener("keyup", stopPropagation);
-
-  input.addEventListener("blur", () => {
-    const block = input.closest(".vditor-wysiwyg__block[data-type='code-block']");
-    if (block instanceof HTMLElement) {
-      input.value = getEditableCodeBlockLanguage(block);
-    }
-  });
-}
-
-function focusEditableCodeBlock(input: HTMLInputElement) {
-  const code = input.closest(".vditor-wysiwyg__block[data-type='code-block']")?.querySelector<HTMLElement>(":scope > pre:first-child > code");
-  if (!code) return;
-  code.focus();
-}
-
-function ensureCodeLanguageDatalist(ownerDocument: Document) {
-  let datalist = ownerDocument.getElementById("hf-code-language-options") as HTMLDataListElement | null;
-  if (!datalist) {
-    datalist = ownerDocument.createElement("datalist");
-    datalist.id = "hf-code-language-options";
-    ownerDocument.body.appendChild(datalist);
-  }
-
-  const languages = resolveCodeLanguageOptions();
-  const signature = languages.join("\n");
-  if (datalist.dataset.hfLanguageOptions === signature) return;
-
-  datalist.replaceChildren(...languages.map((language) => {
-    const option = ownerDocument.createElement("option");
-    option.value = language;
-    return option;
-  }));
-  datalist.dataset.hfLanguageOptions = signature;
-}
-
-function getEditableCodeBlockLanguage(block: HTMLElement) {
-  const code = block.querySelector<HTMLElement>(":scope > pre:first-child > code");
-  return code ? getLanguageClass(code) : "";
-}
-
-function setEditableCodeBlockLanguage(block: HTMLElement, language: string) {
-  const code = block.querySelector<HTMLElement>(":scope > pre:first-child > code");
-  if (!code) return;
-
-  Array.from(code.classList).forEach((className) => {
-    if (className.startsWith("language-")) {
-      code.classList.remove(className);
-    }
-  });
-
-  if (language) {
-    code.classList.add(`language-${language}`);
-  }
-
-  const preview = block.querySelector<HTMLElement>(":scope > .vditor-wysiwyg__preview");
-  if (preview) {
-    preview.innerHTML = code.outerHTML;
-    preview.setAttribute("data-render", "2");
-  }
-}
-
-function normalizeCodeLanguageInput(language: string) {
-  const normalized = language.trim().toLowerCase();
-  return CODE_LANGUAGE_ALIASES[normalized] ?? normalized;
-}
-
-function resolveCodeLanguageOptions() {
-  const highlighterLanguages = ((window as HighlightJsGlobal).hljs?.listLanguages?.() ?? [])
-    .map(normalizeCodeLanguageInput);
-  return uniqueSortedLanguages([...CODE_LANGUAGE_OPTIONS, ...highlighterLanguages]);
-}
-
-function uniqueSortedLanguages(languages: string[]) {
-  return Array.from(new Set(languages.map((language) => language.trim().toLowerCase()).filter(Boolean)))
-    .sort((a, b) => a.localeCompare(b));
 }
 
 function getHaloForgeToolbarConfig(): ToolbarItem[] {

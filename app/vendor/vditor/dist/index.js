@@ -11835,6 +11835,14 @@ var Hint = /** @class */ (function () {
         this.element.style.display = "block";
         this.element.style.right = "auto";
         this.element.querySelectorAll("button").forEach(function (element) {
+            // Prevent the browser's default mousedown behavior of shifting focus
+            // (and therefore blurring the contenteditable editor) to this button.
+            // Editor blur removes the IR "expand" state and can otherwise race
+            // with fillEmoji's use of the current selection Range, making clicks
+            // on hint items unreliable.
+            element.addEventListener("mousedown", function (event) {
+                event.preventDefault();
+            });
             element.addEventListener("click", function (event) {
                 _this.fillEmoji(element, vditor);
                 event.preventDefault();

@@ -6,6 +6,7 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from "react";
+import "./tailwind.css";
 import "./markdown.css";
 
 const LazyMarkdownPanel = lazy(() =>

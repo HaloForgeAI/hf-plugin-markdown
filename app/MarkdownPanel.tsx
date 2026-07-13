@@ -10,7 +10,7 @@ import {
 import { clearPendingPluginDeepLink, useHostEvent, usePluginDeepLink, usePluginWindowTitle } from "@haloforge/plugin-sdk";
 import clsx from "clsx";
 import { useSidebarResize } from "./host/useSidebarResize";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import { MarkdownRenderer } from "./host/MarkdownRenderer";
 import { useAppStore } from "./host/appStore";
 import { useAIChatStore } from "./host/aichatStore";
@@ -23,6 +23,8 @@ import { useMarkdownT } from "./i18n";
 import { AssistantSidebar } from "./markdown/AssistantSidebar";
 import { MarkdownHeader } from "./markdown/MarkdownHeader";
 import { ReaderSidebar } from "./markdown/ReaderSidebar";
+import { FindBar } from "./markdown/FindBar";
+import { applyFindHighlights, clearFindHighlights, computeMatchRanges, findApiSupported, scrollRangeIntoView } from "./markdown/findHighlight";
 import type {
   AssistantIntent,
   AssistantMessage,
@@ -35,8 +37,10 @@ import {
   DEFAULT_MARKDOWN_FONT_SCALE,
   buildAssistantPrompt,
   buildDisplayPrompt,
+  createUntitledDocument,
   deriveDocumentFromContent,
   formatMarkdownFontScale,
+  isUntitledPath,
   getDroppedMarkdownPath,
   getSelectionText,
   LAST_FILE_STORAGE_KEY,
@@ -81,6 +85,7 @@ export function MarkdownPanel() {
   const sendAssistantMessage = useAIChatStore((s) => s.sendMessage);
   const currentThemeType = useThemeStore((s) => s.currentTheme.theme_type);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const mainContentRef = useRef<HTMLElement | null>(null);
   const editorSurfaceRef = useRef<MarkdownEditorSurfaceHandle | null>(null);
   const initialRestoreAttemptedRef = useRef(false);
   const currentAiSessionIdRef = useRef<string | null>(null);
@@ -103,20 +108,40 @@ export function MarkdownPanel() {
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(loadWorkspaceMode());
   const [fontScale, setFontScale] = useState(loadMarkdownFontScale());
   const [pendingAction, setPendingAction] = useState<
-    { kind: "open" | "create"; path: string } | null
+    { kind: "open"; path: string } | { kind: "createUntitled" } | null
   >(null);
   const [isSelectionCollapsed, setIsSelectionCollapsed] = useState(true);
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(loadCollapsedState(LEFT_SIDEBAR_COLLAPSED_STORAGE_KEY));
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(loadCollapsedState(RIGHT_SIDEBAR_COLLAPSED_STORAGE_KEY));
   const [assistantSessionId, setAssistantSessionId] = useState<string | null>(null);
   const [activeHeadingIndex, setActiveHeadingIndex] = useState<number | null>(null);
+  const [previewImageSrc, setPreviewImageSrc] = useState<string | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findCount, setFindCount] = useState(0);
+  const [findIndex, setFindIndex] = useState(0);
+  const findRangesRef = useRef<Range[]>([]);
+  const findIndexRef = useRef(0);
+  const contentAreaRef = useRef<HTMLDivElement | null>(null);
 
   const activeModel = useMemo<ModelConfig | null>(() => {
     if (modelConfigs.length === 0) return null;
     return modelConfigs.find((item) => item.id === selectedModelId) ?? modelConfigs[0];
   }, [modelConfigs, selectedModelId]);
 
-  const isDirty = Boolean(document && savedContent !== null && document.content !== savedContent);
+  const isUntitled = document ? isUntitledPath(document.path) : false;
+  // Guard semantics: an untitled buffer is "dirty" only once it has content,
+  // so switching away from an empty scratch doc never nags about losing work.
+  const isDirty = Boolean(
+    document && (
+      isUntitled
+        ? document.content.trim().length > 0
+        : (savedContent !== null && document.content !== savedContent)
+    ),
+  );
+  // Save semantics: an untitled buffer can always be saved (first save becomes
+  // a Save As), even while empty.
+  const canSave = Boolean(document) && (isUntitled || isDirty);
   const isActiveModule = activeModule === "markdown";
   const windowTitle = document?.name?.trim() || null;
   const fontScaleLabel = formatMarkdownFontScale(fontScale);
@@ -241,9 +266,60 @@ export function MarkdownPanel() {
     void openDocument(path);
   }, [openDocument]));
 
-  const saveDocument = useCallback(async () => {
-    if (!document || !isDirty) {
-      return;
+  const handleSaveAs = useCallback(async (): Promise<boolean> => {
+    if (!document) {
+      return false;
+    }
+    const untitled = isUntitledPath(document.path);
+    const directory = untitled ? undefined : getParentDirectory(document.path);
+    const targetPath = await saveFile({
+      title: t("markdown.reader.saveAsTitle"),
+      directory,
+      defaultName: document.name || t("markdown.reader.saveAsDefaultName"),
+      filters: MARKDOWN_FILTERS,
+    });
+
+    if (!targetPath) {
+      return false;
+    }
+
+    setSavingDocument(true);
+    setDocumentError(null);
+    try {
+      const result = await markdownInvoke<SaveDocumentResult>("md_save_as", {
+        path: targetPath,
+        content: document.content,
+      });
+      setDocument(result.document);
+      setSavedContent(result.document.content);
+      setSelection("");
+      setQuestion("");
+      rememberLastFile(result.document.path);
+      currentAiSessionIdRef.current = null;
+      setAssistantSessionId(null);
+      replaceCurrentThread(result.document.path, true);
+      await loadRecentFiles({ preserveOrder: true });
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setDocumentError(translateDocumentError(message, t, t("markdown.reader.saveAsFailed")));
+      return false;
+    } finally {
+      setSavingDocument(false);
+    }
+  }, [document, loadRecentFiles, replaceCurrentThread, t]);
+
+  const saveDocument = useCallback(async (): Promise<boolean> => {
+    if (!document) {
+      return false;
+    }
+    // First save of an in-memory "Untitled" buffer becomes a Save As so the
+    // user picks where it lands on disk.
+    if (isUntitledPath(document.path)) {
+      return await handleSaveAs();
+    }
+    if (!isDirty) {
+      return true;
     }
 
     setSavingDocument(true);
@@ -257,13 +333,15 @@ export function MarkdownPanel() {
       setSavedContent(result.document.content);
       rememberLastFile(result.document.path);
       await loadRecentFiles({ preserveOrder: true });
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setDocumentError(translateDocumentError(message, t, t("markdown.reader.saveFailed")));
+      return false;
     } finally {
       setSavingDocument(false);
     }
-  }, [document, isDirty, loadRecentFiles, t]);
+  }, [document, handleSaveAs, isDirty, loadRecentFiles, t]);
 
   useEffect(() => {
     void fetchModelConfigs();
@@ -333,7 +411,12 @@ export function MarkdownPanel() {
       }
       event.preventDefault();
       event.stopPropagation();
-      if (document) {
+      if (!document) {
+        return;
+      }
+      if (event.shiftKey) {
+        void handleSaveAs();
+      } else {
         void saveDocument();
       }
     };
@@ -342,7 +425,7 @@ export function MarkdownPanel() {
     return () => {
       window.removeEventListener("keydown", handleSaveShortcut, true);
     };
-  }, [document, saveDocument]);
+  }, [document, handleSaveAs, saveDocument]);
 
   useEffect(() => {
     const handleFontShortcut = (event: globalThis.KeyboardEvent) => {
@@ -376,6 +459,104 @@ export function MarkdownPanel() {
       window.removeEventListener("keydown", handleFontShortcut, true);
     };
   }, [isActiveModule]);
+
+  useEffect(() => {
+    findIndexRef.current = findIndex;
+  }, [findIndex]);
+
+  const gotoMatch = useCallback((delta: number) => {
+    const ranges = findRangesRef.current;
+    if (ranges.length === 0) return;
+    const next = (findIndexRef.current + delta + ranges.length) % ranges.length;
+    setFindIndex(next);
+    applyFindHighlights(ranges, next);
+    scrollRangeIntoView(ranges[next]);
+  }, []);
+
+  const closeFind = useCallback(() => {
+    setFindOpen(false);
+    setFindQuery("");
+    findRangesRef.current = [];
+    setFindCount(0);
+    setFindIndex(0);
+    clearFindHighlights();
+  }, []);
+
+  useEffect(() => {
+    const handler = (event: globalThis.KeyboardEvent) => {
+      if (!isActiveModule) return;
+      if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        event.stopPropagation();
+        setFindOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [isActiveModule]);
+
+  // Recompute find matches when the query, document, or mode changes.
+  useEffect(() => {
+    if (!findOpen) return;
+    const root = contentAreaRef.current;
+    const query = findQuery.trim();
+    if (!root || !findApiSupported() || !query) {
+      findRangesRef.current = [];
+      setFindCount(0);
+      clearFindHighlights();
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      const ranges = computeMatchRanges(root, query);
+      findRangesRef.current = ranges;
+      setFindCount(ranges.length);
+      const nextIndex = ranges.length === 0 ? 0 : Math.min(findIndexRef.current, ranges.length - 1);
+      setFindIndex(nextIndex);
+      applyFindHighlights(ranges, nextIndex);
+      if (ranges.length > 0) {
+        scrollRangeIntoView(ranges[nextIndex]);
+      }
+    }, 80);
+    return () => window.clearTimeout(handle);
+  }, [findOpen, findQuery, document?.content, document?.path, workspaceMode]);
+
+  useEffect(() => {
+    if (!findOpen) {
+      clearFindHighlights();
+    }
+  }, [findOpen]);
+
+  // Unified image click-to-preview across read / split / write modes: a single
+  // capture-phase listener on the content area opens a lightbox for any image,
+  // so every mode behaves identically (vditor's own preview is disabled).
+  useEffect(() => {
+    const root = mainContentRef.current;
+    if (!root) return;
+    const handleImageClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!(target instanceof HTMLImageElement)) return;
+      const src = target.currentSrc || target.src;
+      if (!src) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setPreviewImageSrc(src);
+    };
+    root.addEventListener("click", handleImageClick, true);
+    return () => root.removeEventListener("click", handleImageClick, true);
+  }, []);
+
+  useEffect(() => {
+    if (!previewImageSrc) return;
+    const handleKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        setPreviewImageSrc(null);
+      }
+    };
+    window.addEventListener("keydown", handleKey, true);
+    return () => window.removeEventListener("keydown", handleKey, true);
+  }, [previewImageSrc]);
 
   const handleEditorContentChange = useCallback((content: string) => {
     setDocument((previous) => {
@@ -639,60 +820,54 @@ export function MarkdownPanel() {
     }
   }, [document?.path, openDocument, t]);
 
-  const performCreateFile = useCallback(async (path: string) => {
-    setLoadingDocument(true);
+  // "New" creates an in-memory Untitled buffer that never touches disk until
+  // the user's first save (which becomes a Save As). No dialog, no file.
+  const performCreateUntitled = useCallback(() => {
+    const untitled = createUntitledDocument();
+    setDocument(untitled);
+    setSavedContent(null);
+    setSelection("");
+    setQuestion("");
     setDocumentError(null);
     setAssistantError(null);
-    try {
-      const result = await markdownInvoke<{ document: MarkdownDocument }>("md_create_file", { path });
-      setDocument(result.document);
-      setSavedContent(result.document.content);
-      setSelection("");
-      setQuestion("");
-      rememberLastFile(result.document.path);
-      currentAiSessionIdRef.current = null;
-      setAssistantSessionId(null);
-      replaceCurrentThread(result.document.path, true);
-      await loadRecentFiles({ preserveOrder: true });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setDocumentError(translateDocumentError(message, t, t("markdown.reader.newFailed")));
-    } finally {
-      setLoadingDocument(false);
-    }
-  }, [loadRecentFiles, replaceCurrentThread, t]);
+    currentAiSessionIdRef.current = null;
+    setAssistantSessionId(null);
+    replaceCurrentThread(untitled.path, true);
+  }, [replaceCurrentThread]);
 
-  const handleCreateFile = useCallback(async () => {
-    const directory = document?.path ? getParentDirectory(document.path) : undefined;
-    const targetPath = await saveFile({
-      title: t("markdown.reader.newTitle"),
-      directory,
-      defaultName: t("markdown.reader.newDefaultName"),
-      filters: MARKDOWN_FILTERS,
-    });
-
-    if (!targetPath) {
-      return;
-    }
-
+  const handleCreateFile = useCallback(() => {
     if (isDirty) {
-      setPendingAction({ kind: "create", path: targetPath });
+      setPendingAction({ kind: "createUntitled" });
       return;
     }
+    performCreateUntitled();
+  }, [isDirty, performCreateUntitled]);
 
-    await performCreateFile(targetPath);
-  }, [document?.path, isDirty, performCreateFile, t]);
-
-  const confirmPendingAction = useCallback(() => {
-    const action = pendingAction;
-    setPendingAction(null);
-    if (!action) return;
+  const runPendingAction = useCallback((action: NonNullable<typeof pendingAction>) => {
     if (action.kind === "open") {
       void performOpenDocument(action.path);
     } else {
-      void performCreateFile(action.path);
+      performCreateUntitled();
     }
-  }, [pendingAction, performCreateFile, performOpenDocument]);
+  }, [performCreateUntitled, performOpenDocument]);
+
+  // "Discard" — drop unsaved changes and proceed with the New/Open action.
+  const discardPendingAction = useCallback(() => {
+    const action = pendingAction;
+    setPendingAction(null);
+    if (action) runPendingAction(action);
+  }, [pendingAction, runPendingAction]);
+
+  // "Save" — persist the current buffer first, then proceed only if the save
+  // actually completed (so a cancelled Save As dialog doesn't lose the doc).
+  const savePendingAction = useCallback(async () => {
+    const action = pendingAction;
+    if (!action) return;
+    const saved = await saveDocument();
+    if (!saved) return;
+    setPendingAction(null);
+    runPendingAction(action);
+  }, [pendingAction, runPendingAction, saveDocument]);
 
   const cancelPendingAction = useCallback(() => {
     setPendingAction(null);
@@ -719,6 +894,37 @@ export function MarkdownPanel() {
       setDocumentError(translateDocumentError(message, t));
     }
   }, [document?.path, loadRecentFiles, t]);
+
+  // Clear the whole recent list and also close the currently open document so
+  // nothing is left dangling behind an empty list.
+  const handleClearRecent = useCallback(async () => {
+    try {
+      await markdownInvoke("md_clear_recent_files", {});
+      rememberLastFile(null);
+      setDocument(null);
+      setSavedContent(null);
+      setSelection("");
+      setQuestion("");
+      setAssistantMessages([]);
+      setDocumentError(null);
+      currentAiSessionIdRef.current = null;
+      setAssistantSessionId(null);
+      await loadRecentFiles();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setDocumentError(translateDocumentError(message, t));
+    }
+  }, [loadRecentFiles, t]);
+
+  const handlePruneMissing = useCallback(async () => {
+    try {
+      await markdownInvoke<{ removed: number }>("md_prune_missing_recent_files");
+      await loadRecentFiles();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setDocumentError(translateDocumentError(message, t));
+    }
+  }, [loadRecentFiles, t]);
 
   const handleDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -882,6 +1088,12 @@ export function MarkdownPanel() {
         onRemoveRecent={(path) => {
           void handleRemoveRecent(path);
         }}
+        onClearRecent={() => {
+          void handleClearRecent();
+        }}
+        onPruneMissing={() => {
+          void handlePruneMissing();
+        }}
         onJumpToHeading={handleJumpToHeading}
         activeHeadingIndex={activeHeadingIndex}
         t={t}
@@ -898,10 +1110,10 @@ export function MarkdownPanel() {
         />
       )}
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/35">
+      <main ref={mainContentRef} className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/35">
         <MarkdownHeader
           document={document}
-          isDirty={isDirty}
+          isDirty={canSave}
           savingDocument={savingDocument}
           workspaceMode={workspaceMode}
           previewTheme={previewTheme}
@@ -914,6 +1126,9 @@ export function MarkdownPanel() {
           onSave={() => {
             void saveDocument();
           }}
+          onSaveAs={() => {
+            void handleSaveAs();
+          }}
           t={t}
         />
 
@@ -924,11 +1139,24 @@ export function MarkdownPanel() {
         )}
 
         <div
+          ref={contentAreaRef}
           className={clsx(
-            "min-h-0 flex-1 px-6 py-6",
+            "relative min-h-0 flex-1 px-6 py-6",
             workspaceMode === "read" ? "overflow-auto" : "overflow-hidden",
           )}
         >
+          {findOpen && (
+            <FindBar
+              query={findQuery}
+              matchCount={findCount}
+              currentIndex={findIndex}
+              onQueryChange={setFindQuery}
+              onNext={() => gotoMatch(1)}
+              onPrev={() => gotoMatch(-1)}
+              onClose={closeFind}
+              t={t}
+            />
+          )}
           {loadingDocument ? (
             <div className="flex h-full items-center justify-center text-sm text-foreground-secondary/60">
               <RefreshCw size={16} className="mr-2 animate-spin" />
@@ -1034,35 +1262,45 @@ export function MarkdownPanel() {
         t={t}
       />
 
-      {pendingAction && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 backdrop-blur-sm"
-          onClick={cancelPendingAction}
-        >
-          <div
-            className="w-[min(420px,92vw)] rounded-2xl border border-border bg-surface p-6 shadow-2xl"
+      {previewImageSrc && (
+        <div className="hf-md-lightbox" onClick={() => setPreviewImageSrc(null)}>
+          <img
+            src={previewImageSrc}
+            alt=""
+            className="hf-md-lightbox__img"
             onClick={(event) => event.stopPropagation()}
+          />
+          <button
+            type="button"
+            title={t("markdown.reader.cancel")}
+            onClick={() => setPreviewImageSrc(null)}
+            className="hf-md-lightbox__close"
           >
-            <h3 className="text-base font-semibold text-foreground">
-              {t("markdown.reader.unsavedTitle")}
-            </h3>
-            <p className="mt-2 text-sm text-foreground-secondary">
-              {t("markdown.reader.unsavedConfirm")}
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={cancelPendingAction}
-                className="inline-flex h-9 items-center rounded-full border border-border bg-transparent px-4 text-sm text-foreground-secondary hover:bg-surface-hover hover:text-foreground"
-              >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
+      {pendingAction && (
+        <div className="hf-md-modal-backdrop" onClick={cancelPendingAction}>
+          <div className="hf-md-modal" onClick={(event) => event.stopPropagation()}>
+            <h3 className="hf-md-modal__title">{t("markdown.reader.unsavedTitle")}</h3>
+            <p className="hf-md-modal__body">{t("markdown.reader.unsavedConfirm")}</p>
+            <div className="hf-md-modal__actions">
+              <button type="button" onClick={cancelPendingAction} className="hf-md-btn hf-md-btn--ghost">
                 {t("markdown.reader.cancel")}
+              </button>
+              <button type="button" onClick={discardPendingAction} className="hf-md-btn hf-md-btn--ghost">
+                {t("markdown.reader.dontSave")}
               </button>
               <button
                 type="button"
-                onClick={confirmPendingAction}
-                className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-sm font-medium text-white shadow-sm hover:bg-primary/90"
+                onClick={() => {
+                  void savePendingAction();
+                }}
+                className="hf-md-btn hf-md-btn--primary"
               >
-                {t("markdown.reader.discardAndOpen")}
+                {t("markdown.reader.save")}
               </button>
             </div>
           </div>

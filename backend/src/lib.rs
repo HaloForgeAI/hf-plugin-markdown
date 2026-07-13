@@ -24,7 +24,7 @@ impl HaloForgePlugin for MarkdownPlugin {
         PluginMetadata {
             id: "dev.haloforge.markdown".into(),
             name: "Markdown Workspace".into(),
-            version: "0.2.4".into(),
+            version: "0.2.23".into(),
             description: "AI-native Markdown reader workspace inside HaloForge.".into(),
             author: "HaloForge Team".into(),
             abi_version: PLUGIN_ABI_VERSION,
@@ -51,6 +51,9 @@ impl HaloForgePlugin for MarkdownPlugin {
         ipc.register("md_create_file", Box::new(commands::md_create_file))?;
         ipc.register("md_save_file", Box::new(commands::md_save_file))?;
         ipc.register("md_remove_recent_file", Box::new(commands::md_remove_recent_file))?;
+        ipc.register("md_clear_recent_files", Box::new(commands::md_clear_recent_files))?;
+        ipc.register("md_prune_missing_recent_files", Box::new(commands::md_prune_missing_recent_files))?;
+        ipc.register("md_save_as", Box::new(commands::md_save_as))?;
         ipc.register("md_save_image", Box::new(commands::md_save_image))?;
 
         ctx.log(LogLevel::Info, "Markdown Workspace plugin loaded");

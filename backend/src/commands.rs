@@ -395,6 +395,104 @@ pub fn md_remove_recent_file(args: Value, ctx: &dyn PluginContext) -> Result<Val
     Ok(json!({ "success": true }))
 }
 
+/// Remove recent-files entries whose files no longer exist on disk ("prune
+/// missing"). Returns the number of stale entries removed.
+pub fn md_prune_missing_recent_files(_args: Value, ctx: &dyn PluginContext) -> Result<Value, PluginError> {
+    let rows = ctx
+        .db()
+        .query(&format!("SELECT * FROM {RECENT_FILES_TABLE}"), &[])?;
+
+    let mut removed = 0usize;
+    for row in rows {
+        let path = row.get("path").and_then(Value::as_str).unwrap_or_default();
+        if path.is_empty() {
+            continue;
+        }
+        if !Path::new(path).exists() {
+            let quoted = sql_escape(path);
+            let sql = format!(
+                "DELETE FROM {RECENT_FILES_TABLE} WHERE \"path\" = '{quoted}' OR \"id\" = '{quoted}'"
+            );
+            ctx.db().execute(&sql, &[])?;
+            removed += 1;
+        }
+    }
+
+    Ok(json!({ "removed": removed }))
+}
+
+/// Remove every entry from the recent-files list. Optionally keep the entry
+/// for `keepPath` (typically the currently open document) so clearing the
+/// list doesn't drop the file the user is actively viewing.
+pub fn md_clear_recent_files(args: Value, ctx: &dyn PluginContext) -> Result<Value, PluginError> {
+    let keep = args["keepPath"]
+        .as_str()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+
+    let sql = match keep {
+        Some(path) => {
+            let quoted = sql_escape(path);
+            format!(
+                "DELETE FROM {RECENT_FILES_TABLE} WHERE \"path\" <> '{quoted}' AND \"id\" <> '{quoted}'"
+            )
+        }
+        None => format!("DELETE FROM {RECENT_FILES_TABLE}"),
+    };
+    ctx.db().execute(&sql, &[])?;
+    Ok(json!({ "success": true }))
+}
+
+/// Write the current buffer to a brand-new path chosen by the user ("Save
+/// As"). Ensures a Markdown extension, creates parent directories, refuses to
+/// clobber an existing file, records the new path in recents, and returns the
+/// rebuilt document so the editor can switch to it.
+pub fn md_save_as(args: Value, ctx: &dyn PluginContext) -> Result<Value, PluginError> {
+    let raw = get_path(&args)?;
+    let content = get_content(&args)?;
+    let trimmed = raw.trim();
+    let mut target = PathBuf::from(trimmed);
+
+    let has_markdown_ext = target
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| {
+            let lower = ext.to_ascii_lowercase();
+            MARKDOWN_EXTENSIONS.iter().any(|allowed| *allowed == lower)
+        })
+        .unwrap_or(false);
+
+    if !has_markdown_ext {
+        let current = target
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("untitled")
+            .to_string();
+        target.set_file_name(format!("{current}.md"));
+    }
+
+    if let Some(parent) = target.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            fs::create_dir_all(parent)
+                .map_err(|e| PluginError::Process(format!("failed to create parent dir: {e}")))?;
+        }
+    }
+
+    let normalized_content = content.replace("\r\n", "\n");
+    fs::write(&target, normalized_content.as_bytes())
+        .map_err(|e| PluginError::Process(format!("failed to save markdown file: {e}")))?;
+
+    let normalized = target
+        .canonicalize()
+        .map(|p| strip_extended_path_prefix(&p.to_string_lossy()))
+        .unwrap_or_else(|_| target.to_string_lossy().to_string());
+
+    let document = build_document(normalized, normalized_content);
+    upsert_recent_file(ctx, &document.path, &document.title)?;
+
+    Ok(json!({ "document": document, "success": true }))
+}
+
 fn safe_extension(name: &str) -> String {
     let lower = name.to_ascii_lowercase();
     match lower.rsplit_once('.') {

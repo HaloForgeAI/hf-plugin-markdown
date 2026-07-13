@@ -162,10 +162,21 @@ function rewriteRenderedDom(root: HTMLElement, sourcePath?: string) {
   });
 
   root.querySelectorAll<HTMLImageElement>("img").forEach((img) => {
-    const raw = img.dataset.rawSrc ?? img.getAttribute("src") ?? undefined;
+    // Vditor's preview lazy-loader (lazyLoadImageRender) moves the real URL into
+    // `data-src` and tries to load that raw value directly — which fails for
+    // absolute local paths like `C:\...\img.png`. Fall back to `data-src` and
+    // strip it so the lazy-loader can't clobber the src we resolve below.
+    const attrSrc = img.getAttribute("src")?.trim();
+    const dataSrc = img.getAttribute("data-src")?.trim();
+    const raw = img.dataset.rawSrc
+      ?? (attrSrc && attrSrc.length > 0 ? attrSrc : undefined)
+      ?? (dataSrc && dataSrc.length > 0 ? dataSrc : undefined);
     if (!raw) return;
     if (!img.dataset.rawSrc) {
       img.dataset.rawSrc = raw;
+    }
+    if (img.hasAttribute("data-src")) {
+      img.removeAttribute("data-src");
     }
 
     const mediaKind = detectMediaKindFromSrc(raw);

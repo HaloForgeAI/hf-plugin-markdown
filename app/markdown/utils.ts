@@ -22,6 +22,29 @@ export const MARKDOWN_FONT_SCALE_STORAGE_KEY = "hf-plugin-markdown:font-scale";
 export const LEFT_SIDEBAR_COLLAPSED_STORAGE_KEY = "hf-plugin-markdown:left-sidebar-collapsed";
 export const RIGHT_SIDEBAR_COLLAPSED_STORAGE_KEY = "hf-plugin-markdown:right-sidebar-collapsed";
 export const MARKDOWN_FILTERS = ["md", "markdown", "mdown", "mkd"];
+
+/**
+ * Sentinel path prefix for documents created with "New" that only live in
+ * memory until the first save. They never touch disk, are excluded from the
+ * recent-files list, and trigger a Save As on first save.
+ */
+export const UNTITLED_PATH_PREFIX = "untitled:";
+
+export function isUntitledPath(path: string | null | undefined): boolean {
+  return typeof path === "string" && path.startsWith(UNTITLED_PATH_PREFIX);
+}
+
+export function createUntitledDocument(): MarkdownDocument {
+  return {
+    path: `${UNTITLED_PATH_PREFIX}${crypto.randomUUID()}`,
+    name: "Untitled.md",
+    title: "Untitled",
+    content: "",
+    headings: [],
+    word_count: 0,
+    estimated_read_time_min: 0,
+  };
+}
 export const MAX_CONTEXT_CHARS = 14000;
 export const MAX_SELECTION_CHARS = 2400;
 export const MAX_STORED_THREAD_MESSAGES = 24;
@@ -218,6 +241,7 @@ export function getSelectionText(container: HTMLElement | null): string {
 }
 
 function defaultTitleFromPath(path: string): string {
+  if (isUntitledPath(path)) return "Untitled";
   const parts = path.split(/[\\/]/).filter(Boolean);
   const fileName = parts[parts.length - 1] ?? path;
   return fileName.replace(/\.[^.]+$/, "") || fileName;

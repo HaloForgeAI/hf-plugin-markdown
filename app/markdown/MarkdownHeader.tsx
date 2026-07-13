@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import clsx from "clsx";
-import { BookOpen, Columns2, FilePenLine, Minus, Palette, Plus, RefreshCw, Save } from "lucide-react";
+import { BookOpen, Columns2, FilePenLine, Minus, Palette, Plus, RefreshCw, Save, SaveAll } from "lucide-react";
 import type {
   MarkdownDocument,
   MarkdownTranslator,
@@ -21,6 +21,7 @@ interface MarkdownHeaderProps {
   onIncreaseFontScale: () => void;
   onResetFontScale: () => void;
   onSave: () => void;
+  onSaveAs: () => void;
   t: MarkdownTranslator;
 }
 
@@ -87,6 +88,7 @@ export function MarkdownHeader({
   onIncreaseFontScale,
   onResetFontScale,
   onSave,
+  onSaveAs,
   t,
 }: MarkdownHeaderProps) {
   const workspaceModes: Array<{ mode: WorkspaceMode; icon: typeof BookOpen }> = [
@@ -233,6 +235,13 @@ export function MarkdownHeader({
               onClick={onSave}
             >
               {savingDocument ? <RefreshCw size={13} className="animate-spin" /> : <Save size={13} />}
+            </ToolbarIconButton>
+            <ToolbarIconButton
+              title={`${t("markdown.reader.saveAs")} · Cmd/Ctrl+Shift+S`}
+              disabled={savingDocument}
+              onClick={onSaveAs}
+            >
+              <SaveAll size={13} />
             </ToolbarIconButton>
           </div>
         </div>

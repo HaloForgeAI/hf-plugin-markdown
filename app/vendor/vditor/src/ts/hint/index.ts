@@ -111,6 +111,15 @@ ${i === 0 ? "class='vditor-hint--current'" : ""}> ${html}</button>`;
         this.element.style.right = "auto";
 
         this.element.querySelectorAll("button").forEach((element) => {
+            // Prevent the browser's default mousedown behavior of shifting focus
+            // (and therefore blurring the contenteditable editor) to this button.
+            // Editor blur removes the IR "expand" state and can otherwise race
+            // with fillEmoji's use of the current selection Range, making clicks
+            // on hint items unreliable. Keeping focus on the editor throughout
+            // the click makes selection behave exactly like the keyboard path.
+            element.addEventListener("mousedown", (event) => {
+                event.preventDefault();
+            });
             element.addEventListener("click", (event) => {
                 this.fillEmoji(element, vditor);
                 event.preventDefault();

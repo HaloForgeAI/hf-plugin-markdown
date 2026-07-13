@@ -227,6 +227,26 @@
   background: transparent !important;
 }
 
+/* IR code blocks: the node itself is the single box; the inner editable <pre>
+   and the rendered preview must be flat (no nested border/background) so the
+   block reads as one clean, Typora-like code box. */
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"] pre,
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"] .vditor-ir__preview {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  margin: 0 !important;
+}
+
+/* Language fence line (```lang) shown while editing — keep it subtle. */
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"] .vditor-ir__marker--pre {
+  display: block;
+  padding: 0.35em 1.1em 0;
+  font-size: 0.8em;
+  color: var(--hf-md-foreground-secondary);
+  opacity: 0.75;
+}
+
 .markdown-body pre code,
 .markdown-body code.hljs,
 .markdown-body pre .hljs,
@@ -743,44 +763,6 @@
   color: color-mix(in srgb, var(--hf-md-foreground-secondary) 70%, transparent);
 }
 
-.hf-markdown-editor .hf-code-language-inline {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
-  z-index: 6;
-  display: block;
-  width: clamp(108px, 18%, 148px);
-  max-width: calc(100% - 20px);
-  pointer-events: auto;
-  color: var(--hf-md-foreground);
-}
-
-.hf-markdown-editor .hf-code-language-input {
-  height: 26px;
-  width: 100%;
-  border: 1px solid color-mix(in srgb, var(--hf-md-border) 82%, transparent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--hf-md-code-bg) 78%, var(--hf-md-panel-bg-raised));
-  color: var(--hf-md-foreground);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
-  box-sizing: border-box;
-  padding: 0 7px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 11px;
-  line-height: 1;
-  outline: none;
-}
-
-.hf-markdown-editor .hf-code-language-input::placeholder {
-  color: color-mix(in srgb, var(--hf-md-foreground-secondary) 74%, transparent);
-}
-
-.hf-markdown-editor .hf-code-language-input:focus {
-  background: var(--hf-md-panel-bg-raised);
-  border-color: color-mix(in srgb, var(--hf-md-primary) 62%, var(--hf-md-border));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--hf-md-primary) 14%, transparent);
-}
-
 .hf-outline-heading {
   position: relative;
   border: 1px solid transparent;
@@ -996,4 +978,487 @@
     border-top: 1px solid color-mix(in srgb, var(--hf-md-border) 86%, transparent);
     border-left: 0;
   }
+}
+
+/* =========================================================================
+   Editor overlays — fully self-contained styling.
+   These deliberately avoid Tailwind utility classes: the plugin renders inside
+   HaloForge and does NOT ship its own Tailwind build, so any utility class the
+   host doesn't also use gets purged from the host stylesheet and silently does
+   nothing. Everything the popovers need is defined here instead.
+   ========================================================================= */
+.hf-md-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+}
+
+/* Typora-style table size picker */
+.hf-md-picker {
+  position: fixed;
+  z-index: 2147483001;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--hf-md-border);
+  background: var(--hf-md-surface);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+  color: var(--hf-md-foreground);
+  font-size: 12px;
+}
+
+.hf-md-picker__label {
+  margin-bottom: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--hf-md-foreground);
+}
+
+.hf-md-picker__grid {
+  display: grid;
+  gap: 3px;
+}
+
+.hf-md-table-picker-cell {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--hf-md-border) 90%, transparent);
+  background: color-mix(in srgb, var(--hf-md-background) 70%, transparent);
+  cursor: pointer;
+  transition: background-color 0.08s ease, border-color 0.08s ease;
+}
+
+.hf-md-table-picker-cell:hover {
+  border-color: color-mix(in srgb, var(--hf-md-primary) 55%, var(--hf-md-border));
+}
+
+.hf-md-table-picker-cell--active {
+  background: color-mix(in srgb, var(--hf-md-primary) 32%, transparent);
+  border-color: color-mix(in srgb, var(--hf-md-primary) 70%, var(--hf-md-border));
+}
+
+.hf-md-picker__footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--hf-md-border) 60%, transparent);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hf-md-picker__sep {
+  color: var(--hf-md-foreground-secondary);
+  font-size: 12px;
+}
+
+.hf-md-picker__input {
+  height: 28px;
+  width: 48px;
+  border-radius: 6px;
+  border: 1px solid var(--hf-md-border);
+  background: var(--hf-md-background);
+  padding: 0 6px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--hf-md-foreground);
+  outline: none;
+}
+
+.hf-md-picker__input:focus {
+  border-color: color-mix(in srgb, var(--hf-md-primary) 50%, var(--hf-md-border));
+}
+
+.hf-md-picker__insert {
+  margin-left: auto;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: none;
+  background: var(--hf-md-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.hf-md-picker__insert:hover {
+  background: color-mix(in srgb, var(--hf-md-primary) 88%, black);
+}
+
+/* Right-click context menu */
+.hf-md-context-menu {
+  position: fixed;
+  z-index: 2147483001;
+  min-width: 192px;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--hf-md-border);
+  background: var(--hf-md-surface);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+  animation: hf-md-context-in 0.09s ease-out;
+}
+
+.hf-md-context-menu__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--hf-md-foreground);
+  cursor: pointer;
+}
+
+.hf-md-context-menu__item:hover {
+  background: color-mix(in srgb, var(--hf-md-primary) 12%, transparent);
+}
+
+.hf-md-context-menu__item--danger {
+  color: #f87171;
+}
+
+.hf-md-context-menu__item--danger:hover {
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+}
+
+.hf-md-context-menu__item--disabled {
+  color: color-mix(in srgb, var(--hf-md-foreground-secondary) 55%, transparent);
+  cursor: not-allowed;
+}
+
+.hf-md-context-menu__item--disabled:hover {
+  background: transparent;
+}
+
+.hf-md-context-menu__icon {
+  display: flex;
+  height: 16px;
+  width: 16px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--hf-md-foreground-secondary);
+}
+
+.hf-md-context-menu__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hf-md-context-menu__sep {
+  height: 1px;
+  margin: 4px 0;
+  background: color-mix(in srgb, var(--hf-md-border) 60%, transparent);
+}
+
+@keyframes hf-md-context-in {
+  from { opacity: 0; transform: translateY(-3px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Image lightbox */
+.hf-md-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(6px);
+}
+
+.hf-md-lightbox__img {
+  max-height: 100%;
+  max-width: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.hf-md-lightbox__close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  height: 36px;
+  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+}
+
+.hf-md-lightbox__close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* In-document find bar + highlights */
+.hf-md-find-bar {
+  position: absolute;
+  right: 24px;
+  top: 12px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 9999px;
+  border: 1px solid var(--hf-md-border);
+  background: var(--hf-md-surface);
+  padding: 4px 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(6px);
+}
+
+.hf-md-find-bar__icon {
+  margin-left: 4px;
+  flex-shrink: 0;
+  color: var(--hf-md-foreground-secondary);
+}
+
+.hf-md-find-bar__input {
+  height: 24px;
+  width: 160px;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--hf-md-foreground);
+}
+
+.hf-md-find-bar__count {
+  min-width: 42px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--hf-md-foreground-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.hf-md-find-bar__btn {
+  height: 24px;
+  width: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--hf-md-foreground-secondary);
+  cursor: pointer;
+}
+
+.hf-md-find-bar__btn:hover {
+  background: color-mix(in srgb, var(--hf-md-primary) 12%, transparent);
+  color: var(--hf-md-foreground);
+}
+
+.hf-md-find-bar__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+::highlight(hf-md-find) {
+  background-color: color-mix(in srgb, #facc15 42%, transparent);
+  color: inherit;
+}
+
+::highlight(hf-md-find-active) {
+  background-color: color-mix(in srgb, var(--hf-md-primary) 62%, transparent);
+  color: #fff;
+}
+
+/* Recent-file row hover remove button (self-contained; host Tailwind purges group-hover) */
+.hf-md-recent-remove {
+  visibility: hidden;
+  height: 20px;
+  width: 20px;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--hf-md-foreground-secondary);
+  cursor: pointer;
+  transition: color 0.1s ease, background-color 0.1s ease;
+}
+
+.hf-md-recent-row:hover .hf-md-recent-remove {
+  visibility: visible;
+}
+
+.hf-md-recent-remove:hover {
+  background: color-mix(in srgb, var(--hf-md-background) 60%, transparent);
+  color: #f87171;
+}
+
+/* Unsaved-changes confirm dialog (self-contained) */
+.hf-md-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483005;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.hf-md-modal {
+  width: min(440px, 92vw);
+  border-radius: 16px;
+  border: 1px solid var(--hf-md-border);
+  background: var(--hf-md-surface);
+  padding: 24px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+}
+
+.hf-md-modal__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--hf-md-foreground);
+}
+
+.hf-md-modal__body {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--hf-md-foreground-secondary);
+}
+
+.hf-md-modal__actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.hf-md-btn {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 16px;
+  border-radius: 9999px;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.hf-md-btn--ghost {
+  border-color: var(--hf-md-border);
+  background: transparent;
+  color: var(--hf-md-foreground-secondary);
+}
+
+.hf-md-btn--ghost:hover {
+  color: var(--hf-md-foreground);
+  background: color-mix(in srgb, var(--hf-md-foreground) 6%, transparent);
+}
+
+.hf-md-btn--primary {
+  background: var(--hf-md-primary);
+  color: #fff;
+  font-weight: 500;
+}
+
+.hf-md-btn--primary:hover {
+  background: color-mix(in srgb, var(--hf-md-primary) 90%, black);
+}
+
+/* Inline link editor popover */
+.hf-md-linkedit {
+  position: fixed;
+  z-index: 2147483003;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--hf-md-border);
+  background: var(--hf-md-surface);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+}
+
+.hf-md-linkedit__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hf-md-linkedit__label {
+  width: 40px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--hf-md-foreground-secondary);
+}
+
+.hf-md-linkedit__input {
+  flex: 1;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--hf-md-border);
+  background: var(--hf-md-background);
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--hf-md-foreground);
+  outline: none;
+}
+
+.hf-md-linkedit__input:focus {
+  border-color: color-mix(in srgb, var(--hf-md-primary) 50%, var(--hf-md-border));
+}
+
+.hf-md-linkedit__actions {
+  margin-top: 2px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.hf-md-linkedit .hf-md-btn {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+/* Code-fence language hint (vditor.hint.element) — this is the ONLY
+   `.vditor-hint` that is a direct child of `.vditor-content`; the toolbar's
+   other dropdown panels (headings, themes, export, ...) share the same class
+   but live inside `.vditor-toolbar`, so this selector doesn't touch them. */
+.hf-markdown-editor .vditor-content > .vditor-hint {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--hf-md-border);
+  background: var(--hf-md-surface);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+}
+
+.hf-markdown-editor .vditor-content > .vditor-hint button {
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12.5px;
+  color: var(--hf-md-foreground);
+}
+
+.hf-markdown-editor .vditor-content > .vditor-hint button.vditor-hint--current,
+.hf-markdown-editor .vditor-content > .vditor-hint button:hover {
+  background: color-mix(in srgb, var(--hf-md-primary) 16%, transparent) !important;
+  color: var(--hf-md-foreground) !important;
 }

@@ -1,0 +1,34 @@
+/*
+ * Plugin-owned Tailwind build.
+ *
+ * The plugin renders inside HaloForge, whose global Tailwind stylesheet only
+ * contains the utility classes the HOST source uses — anything the plugin uses
+ * but the host doesn't is purged and silently missing. Generating our own
+ * utilities from the plugin's own source fixes that at the root.
+ *
+ * Preflight is intentionally omitted: the host already ships Tailwind's global
+ * preflight (border reset etc.), so re-adding it here would reset host/vditor
+ * DOM too. We only need the utility layer plus a theme that mirrors HaloForge's
+ * semantic colors so `text-foreground`, `bg-surface`, `border-border`, … resolve.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  --color-primary: var(--hf-primary, #f97316);
+  --color-primary-foreground: var(--hf-primary-foreground, #ffffff);
+  --color-secondary: var(--hf-secondary, #6366f1);
+  --color-background: var(--hf-background, #181818);
+  --color-surface: var(--hf-surface, #1a1a1a);
+  --color-surface-hover: var(--hf-surface-hover, #222222);
+  --color-foreground: var(--hf-text, #e5e5e5);
+  --color-foreground-secondary: var(--hf-text-secondary, #a3a3a3);
+  --color-accent: var(--hf-accent, #f97316);
+  --color-success: var(--hf-success, #22c55e);
+  --color-warning: var(--hf-warning, #eab308);
+  --color-error: var(--hf-error, #ef4444);
+  --color-sidebar: var(--hf-sidebar-background, #141414);
+  --color-border: var(--hf-border, #2a2a2a);
+  --color-border-subtle: var(--hf-border-subtle, #1f1f1f);
+}
