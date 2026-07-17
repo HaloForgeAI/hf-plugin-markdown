@@ -1126,13 +1126,7 @@ export function MarkdownPanel() {
           </div>
         )}
 
-        <div
-          ref={contentAreaRef}
-          className={clsx(
-            "relative min-h-0 flex-1 px-6 py-6",
-            workspaceMode === "read" ? "overflow-auto" : "overflow-hidden",
-          )}
-        >
+        <div className="relative min-h-0 flex-1 overflow-hidden">
           {findOpen && (
             <FindBar
               query={findQuery}
@@ -1145,67 +1139,75 @@ export function MarkdownPanel() {
               t={t}
             />
           )}
-          {loadingDocument ? (
-            <div className="flex h-full items-center justify-center text-sm text-foreground-secondary/60">
-              <RefreshCw size={16} className="mr-2 animate-spin" />
-              {t("markdown.reader.loading")}
-            </div>
-          ) : !document ? (
-            <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-border bg-surface/20 px-8 text-center text-sm text-foreground-secondary/60">
-              {t("markdown.reader.emptyState")}
-            </div>
-          ) : workspaceMode === "read" ? (
-            <div
-              ref={previewRef}
-              onMouseUp={capturePreviewSelection}
-              onKeyUp={capturePreviewSelection}
-              style={{ "--hf-md-font-scale": String(fontScale) } as React.CSSProperties}
-              className={clsx(
-                "mx-auto rounded-[28px] border",
-                resolvePreviewThemeClass(previewTheme),
-              )}
-            >
-              <MarkdownRenderer
-                content={document.content}
-                sourcePath={document.path}
-                themeType={currentThemeType}
-              />
-            </div>
-          ) : workspaceMode === "split" ? (
-            <div className="h-full min-h-0">
-              <MarkdownSourceSurface
-                ref={editorSurfaceRef}
-                value={document.content}
-                sourcePath={document.path}
-                headings={document.headings}
-                themeType={currentThemeType}
-                placeholder={t("markdown.reader.editPlaceholder")}
-                documentPath={document.path}
-                fontScale={fontScale}
-                focusToken={editorFocusToken}
-                onChange={handleEditorContentChange}
-                onSelectionChange={handleEditorSelectionChange}
-                onActiveHeadingChange={handleActiveHeadingChange}
-              />
-            </div>
-          ) : (
-            <div className="h-full min-h-0">
-              <MarkdownEditorSurface
-                ref={editorSurfaceRef}
-                value={document.content}
-                sourcePath={document.path}
-                headings={document.headings}
-                themeType={currentThemeType}
-                placeholder={t("markdown.reader.editPlaceholder")}
-                documentPath={document.path}
-                fontScale={fontScale}
-                focusToken={editorFocusToken}
-                onChange={handleEditorContentChange}
-                onSelectionChange={handleEditorSelectionChange}
-                onActiveHeadingChange={handleActiveHeadingChange}
-              />
-            </div>
-          )}
+          <div
+            ref={contentAreaRef}
+            className={clsx(
+              "h-full min-h-0 px-6 py-6",
+              workspaceMode === "read" ? "overflow-auto" : "overflow-hidden",
+            )}
+          >
+            {loadingDocument ? (
+              <div className="flex h-full items-center justify-center text-sm text-foreground-secondary/60">
+                <RefreshCw size={16} className="mr-2 animate-spin" />
+                {t("markdown.reader.loading")}
+              </div>
+            ) : !document ? (
+              <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-border bg-surface/20 px-8 text-center text-sm text-foreground-secondary/60">
+                {t("markdown.reader.emptyState")}
+              </div>
+            ) : workspaceMode === "read" ? (
+              <div
+                ref={previewRef}
+                onMouseUp={capturePreviewSelection}
+                onKeyUp={capturePreviewSelection}
+                style={{ "--hf-md-font-scale": String(fontScale) } as React.CSSProperties}
+                className={clsx(
+                  "mx-auto rounded-[28px] border",
+                  resolvePreviewThemeClass(previewTheme),
+                )}
+              >
+                <MarkdownRenderer
+                  content={document.content}
+                  sourcePath={document.path}
+                  themeType={currentThemeType}
+                />
+              </div>
+            ) : workspaceMode === "split" ? (
+              <div className="h-full min-h-0">
+                <MarkdownSourceSurface
+                  ref={editorSurfaceRef}
+                  value={document.content}
+                  sourcePath={document.path}
+                  headings={document.headings}
+                  themeType={currentThemeType}
+                  placeholder={t("markdown.reader.editPlaceholder")}
+                  documentPath={document.path}
+                  fontScale={fontScale}
+                  focusToken={editorFocusToken}
+                  onChange={handleEditorContentChange}
+                  onSelectionChange={handleEditorSelectionChange}
+                  onActiveHeadingChange={handleActiveHeadingChange}
+                />
+              </div>
+            ) : (
+              <div className="h-full min-h-0">
+                <MarkdownEditorSurface
+                  ref={editorSurfaceRef}
+                  value={document.content}
+                  sourcePath={document.path}
+                  headings={document.headings}
+                  themeType={currentThemeType}
+                  placeholder={t("markdown.reader.editPlaceholder")}
+                  documentPath={document.path}
+                  fontScale={fontScale}
+                  focusToken={editorFocusToken}
+                  onChange={handleEditorContentChange}
+                  onSelectionChange={handleEditorSelectionChange}
+                  onActiveHeadingChange={handleActiveHeadingChange}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </main>
 

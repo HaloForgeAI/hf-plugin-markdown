@@ -1323,6 +1323,13 @@
   color: var(--hf-md-foreground);
 }
 
+.hf-md-find-bar__input:focus,
+.hf-md-find-bar__input:focus-visible {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
 .hf-md-find-bar__count {
   min-width: 42px;
   flex-shrink: 0;
