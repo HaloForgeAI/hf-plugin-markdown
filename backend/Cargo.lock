@@ -134,9 +134,9 @@ dependencies = [
 
 [[package]]
 name = "haloforge-plugin-api"
-version = "0.2.17"
+version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91f8ac0dd68e901a635026de99c906dc81dff098cf4a1741a408dd0d1e2b0391"
+checksum = "f209cfb0fdfccdf3337b7398ceecdc6b607c349e26b0de19f4bc42a111ce17d3"
 dependencies = [
  "chrono",
  "serde",
