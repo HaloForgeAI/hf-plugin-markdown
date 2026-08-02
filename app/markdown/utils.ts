@@ -40,6 +40,7 @@ export function createUntitledDocument(): MarkdownDocument {
     name: "Untitled.md",
     title: "Untitled",
     content: "",
+    file_revision: "",
     headings: [],
     word_count: 0,
     estimated_read_time_min: 0,

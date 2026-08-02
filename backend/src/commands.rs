@@ -3,8 +3,9 @@ use base64::Engine;
 use hf_plugin_api::{PluginContext, PluginError};
 use serde::Serialize;
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{hash_map::DefaultHasher, HashMap};
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
 const RECENT_FILES_TABLE: &str = "plugin_dev_haloforge_markdown_recent_files";
@@ -23,6 +24,7 @@ struct MarkdownDocument {
     name: String,
     title: String,
     content: String,
+    file_revision: String,
     headings: Vec<MarkdownHeading>,
     word_count: usize,
     estimated_read_time_min: usize,
@@ -37,12 +39,12 @@ fn get_path(args: &Value) -> Result<String, PluginError> {
         .ok_or_else(|| PluginError::Custom("missing required field: path".into()))
 }
 
-    fn get_content(args: &Value) -> Result<String, PluginError> {
-        args["content"]
+fn get_content(args: &Value) -> Result<String, PluginError> {
+    args["content"]
         .as_str()
         .map(str::to_string)
         .ok_or_else(|| PluginError::Custom("missing required field: content".into()))
-    }
+}
 
 fn sql_escape(value: &str) -> String {
     value.replace('\'', "''")
@@ -64,7 +66,22 @@ fn default_title_from_path(path: &str) -> String {
 fn is_markdown_escape_target(ch: char) -> bool {
     matches!(
         ch,
-        '\\' | '`' | '*' | '_' | '{' | '}' | '[' | ']' | '(' | ')' | '#' | '+' | '-' | '.' | '!' | '>' | '|'
+        '\\' | '`'
+            | '*'
+            | '_'
+            | '{'
+            | '}'
+            | '['
+            | ']'
+            | '('
+            | ')'
+            | '#'
+            | '+'
+            | '-'
+            | '.'
+            | '!'
+            | '>'
+            | '|'
     )
 }
 
@@ -112,16 +129,23 @@ fn normalize_markdown_file(path: &str) -> Result<String, PluginError> {
         return Err(PluginError::NotFound(format!("path not found: {trimmed}")));
     }
     if !file.is_file() {
-        return Err(PluginError::Custom(format!("path is not a file: {trimmed}")));
+        return Err(PluginError::Custom(format!(
+            "path is not a file: {trimmed}"
+        )));
     }
 
     let extension = file
         .extension()
         .and_then(|ext| ext.to_str())
         .map(|ext| ext.to_ascii_lowercase())
-        .ok_or_else(|| PluginError::Custom("Selected file is not a supported Markdown document.".into()))?;
+        .ok_or_else(|| {
+            PluginError::Custom("Selected file is not a supported Markdown document.".into())
+        })?;
 
-    if !MARKDOWN_EXTENSIONS.iter().any(|allowed| *allowed == extension) {
+    if !MARKDOWN_EXTENSIONS
+        .iter()
+        .any(|allowed| *allowed == extension)
+    {
         return Err(PluginError::Custom(
             "Selected file is not a supported Markdown document.".into(),
         ));
@@ -232,6 +256,12 @@ fn estimate_read_time_minutes(words: usize) -> usize {
     ((words.max(1) as f64) / 220.0).ceil() as usize
 }
 
+fn content_revision(content: &str) -> String {
+    let mut revision_hasher = DefaultHasher::new();
+    content.hash(&mut revision_hasher);
+    format!("{:016x}", revision_hasher.finish())
+}
+
 fn build_document(path: String, content: String) -> MarkdownDocument {
     let title = extract_title(&path, &content);
     let name = Path::new(&path)
@@ -241,12 +271,14 @@ fn build_document(path: String, content: String) -> MarkdownDocument {
         .to_string();
     let headings = extract_headings(&content);
     let words = word_count(&content);
+    let file_revision = content_revision(&content);
 
     MarkdownDocument {
         path,
         name,
         title,
         content,
+        file_revision,
         headings,
         word_count: words,
         estimated_read_time_min: estimate_read_time_minutes(words),
@@ -369,6 +401,41 @@ pub fn md_open_file(args: Value, ctx: &dyn PluginContext) -> Result<Value, Plugi
     Ok(json!({ "document": document }))
 }
 
+pub fn md_refresh_file(args: Value, _ctx: &dyn PluginContext) -> Result<Value, PluginError> {
+    let path = normalize_markdown_file(&get_path(&args)?)?;
+    let content = fs::read_to_string(&path)
+        .map_err(|e| PluginError::Process(format!("failed to read markdown file: {e}")))?;
+    let document = build_document(path, content);
+    let known_revision = args["knownRevision"].as_str().unwrap_or_default();
+    let force = args["force"].as_bool().unwrap_or(false);
+
+    if !force && known_revision == document.file_revision {
+        return Ok(json!({
+            "changed": false,
+            "document": Value::Null,
+        }));
+    }
+
+    Ok(json!({
+        "changed": true,
+        "document": document,
+    }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::content_revision;
+
+    #[test]
+    fn content_revision_is_stable_and_content_sensitive() {
+        assert_eq!(content_revision("# Hello\n"), content_revision("# Hello\n"));
+        assert_ne!(
+            content_revision("# Hello\n"),
+            content_revision("# Changed\n")
+        );
+    }
+}
+
 pub fn md_save_file(args: Value, ctx: &dyn PluginContext) -> Result<Value, PluginError> {
     let path = normalize_markdown_file(&get_path(&args)?)?;
     let content = get_content(&args)?;
@@ -397,7 +464,10 @@ pub fn md_remove_recent_file(args: Value, ctx: &dyn PluginContext) -> Result<Val
 
 /// Remove recent-files entries whose files no longer exist on disk ("prune
 /// missing"). Returns the number of stale entries removed.
-pub fn md_prune_missing_recent_files(_args: Value, ctx: &dyn PluginContext) -> Result<Value, PluginError> {
+pub fn md_prune_missing_recent_files(
+    _args: Value,
+    ctx: &dyn PluginContext,
+) -> Result<Value, PluginError> {
     let rows = ctx
         .db()
         .query(&format!("SELECT * FROM {RECENT_FILES_TABLE}"), &[])?;

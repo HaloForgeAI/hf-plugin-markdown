@@ -19,6 +19,7 @@ export interface MarkdownDocument {
   name: string;
   title: string;
   content: string;
+  file_revision: string;
   headings: MarkdownHeading[];
   word_count: number;
   estimated_read_time_min: number;
@@ -45,6 +46,11 @@ export interface CommandResult {
 
 export interface SaveDocumentResult extends CommandResult {
   document: MarkdownDocument;
+}
+
+export interface RefreshDocumentResult {
+  changed: boolean;
+  document: MarkdownDocument | null;
 }
 
 export interface FileWithPath extends File {

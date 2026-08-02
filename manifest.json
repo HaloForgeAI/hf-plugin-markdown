@@ -87,6 +87,7 @@
   "commands": [
     { "id": "md_recent_files", "description": "List recently opened Markdown files" },
     { "id": "md_open_file", "description": "Open a Markdown file and persist it in recents" },
+    { "id": "md_refresh_file", "description": "Refresh an open Markdown file without changing recents" },
     { "id": "md_create_file", "description": "Create a Markdown file and open it" },
     { "id": "md_save_file", "description": "Save a Markdown file and refresh document metadata" },
     { "id": "md_remove_recent_file", "description": "Remove a Markdown file from recents" },

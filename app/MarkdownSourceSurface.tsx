@@ -10,6 +10,7 @@ interface MarkdownSourceSurfaceProps {
   placeholder: string;
   documentPath?: string | null;
   fontScale: number;
+  assetRevision?: string | number;
   focusToken?: string;
   onChange: (value: string) => void;
   onSelectionChange?: (selection: string) => void;
@@ -24,6 +25,7 @@ export const MarkdownSourceSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
   placeholder,
   documentPath,
   fontScale,
+  assetRevision,
   focusToken,
   onChange,
   onSelectionChange,
@@ -39,6 +41,7 @@ export const MarkdownSourceSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       placeholder={placeholder}
       documentPath={documentPath ?? sourcePath}
       fontScale={fontScale}
+      assetRevision={assetRevision}
       focusToken={focusToken}
       variant="split"
       onChange={onChange}

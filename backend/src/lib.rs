@@ -48,11 +48,21 @@ impl HaloForgePlugin for MarkdownPlugin {
 
         ipc.register("md_recent_files", Box::new(commands::md_recent_files))?;
         ipc.register("md_open_file", Box::new(commands::md_open_file))?;
+        ipc.register("md_refresh_file", Box::new(commands::md_refresh_file))?;
         ipc.register("md_create_file", Box::new(commands::md_create_file))?;
         ipc.register("md_save_file", Box::new(commands::md_save_file))?;
-        ipc.register("md_remove_recent_file", Box::new(commands::md_remove_recent_file))?;
-        ipc.register("md_clear_recent_files", Box::new(commands::md_clear_recent_files))?;
-        ipc.register("md_prune_missing_recent_files", Box::new(commands::md_prune_missing_recent_files))?;
+        ipc.register(
+            "md_remove_recent_file",
+            Box::new(commands::md_remove_recent_file),
+        )?;
+        ipc.register(
+            "md_clear_recent_files",
+            Box::new(commands::md_clear_recent_files),
+        )?;
+        ipc.register(
+            "md_prune_missing_recent_files",
+            Box::new(commands::md_prune_missing_recent_files),
+        )?;
         ipc.register("md_save_as", Box::new(commands::md_save_as))?;
         ipc.register("md_save_image", Box::new(commands::md_save_image))?;
 

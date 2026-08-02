@@ -12,6 +12,8 @@ interface MarkdownHeaderProps {
   document: MarkdownDocument | null;
   isDirty: boolean;
   savingDocument: boolean;
+  refreshingDocument: boolean;
+  canRefresh: boolean;
   workspaceMode: WorkspaceMode;
   previewTheme: PreviewTheme;
   fontScaleLabel: string;
@@ -20,6 +22,7 @@ interface MarkdownHeaderProps {
   onDecreaseFontScale: () => void;
   onIncreaseFontScale: () => void;
   onResetFontScale: () => void;
+  onRefresh: () => void;
   onSave: () => void;
   onSaveAs: () => void;
   t: MarkdownTranslator;
@@ -79,6 +82,8 @@ export function MarkdownHeader({
   document,
   isDirty,
   savingDocument,
+  refreshingDocument,
+  canRefresh,
   workspaceMode,
   previewTheme,
   fontScaleLabel,
@@ -87,6 +92,7 @@ export function MarkdownHeader({
   onDecreaseFontScale,
   onIncreaseFontScale,
   onResetFontScale,
+  onRefresh,
   onSave,
   onSaveAs,
   t,
@@ -221,7 +227,7 @@ export function MarkdownHeader({
             })}
           </div>
 
-          {/* Save */}
+          {/* File actions */}
           <div
             className={clsx(
               "hf-toolbar-group flex items-center rounded-full border p-0.5 shadow-sm",
@@ -229,6 +235,13 @@ export function MarkdownHeader({
             )}
             aria-hidden={!document}
           >
+            <ToolbarIconButton
+              title={refreshingDocument ? t("markdown.reader.refreshing") : t("markdown.reader.refresh")}
+              disabled={!canRefresh || refreshingDocument}
+              onClick={onRefresh}
+            >
+              <RefreshCw size={13} className={refreshingDocument ? "animate-spin" : undefined} />
+            </ToolbarIconButton>
             <ToolbarIconButton
               title={saveTitle}
               disabled={!isDirty || savingDocument}

@@ -25,6 +25,7 @@ import { MarkdownHeader } from "./markdown/MarkdownHeader";
 import { ReaderSidebar } from "./markdown/ReaderSidebar";
 import { FindBar } from "./markdown/FindBar";
 import { ImageLightbox } from "./markdown/ImageLightbox";
+import { useDocumentRefresh } from "./markdown/useDocumentRefresh";
 import { applyFindHighlights, clearFindHighlights, computeMatchRanges, findApiSupported, scrollRangeIntoView } from "./markdown/findHighlight";
 import type {
   AssistantIntent,
@@ -102,6 +103,7 @@ export function MarkdownPanel() {
   const [loadingDocument, setLoadingDocument] = useState(false);
   const [savingDocument, setSavingDocument] = useState(false);
   const [documentError, setDocumentError] = useState<string | null>(null);
+  const [assetRevision, setAssetRevision] = useState(0);
   const [assistantError, setAssistantError] = useState<string | null>(null);
   const [isAssistantStreaming, setIsAssistantStreaming] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -146,6 +148,31 @@ export function MarkdownPanel() {
   const isActiveModule = activeModule === "markdown";
   const windowTitle = document?.name?.trim() || null;
   const fontScaleLabel = formatMarkdownFontScale(fontScale);
+
+  const applyRefreshedDocument = useCallback((refreshedDocument: MarkdownDocument) => {
+    setDocument(refreshedDocument);
+    setSavedContent(refreshedDocument.content);
+    setSelection("");
+    setAssetRevision((previous) => previous + 1);
+  }, []);
+
+  const handleRefreshError = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    setDocumentError(translateDocumentError(message, t, t("markdown.reader.refreshFailed")));
+  }, [t]);
+
+  const {
+    canRefresh,
+    refreshing: refreshingDocument,
+    refreshNow,
+  } = useDocumentRefresh({
+    document,
+    active: isActiveModule,
+    dirty: isDirty,
+    busy: loadingDocument || savingDocument,
+    onRefresh: applyRefreshedDocument,
+    onError: handleRefreshError,
+  });
 
   usePluginWindowTitle(windowTitle, { subtitle: "Markdown" });
 
@@ -232,6 +259,7 @@ export function MarkdownPanel() {
       const result = await markdownInvoke<{ document: MarkdownDocument }>("md_open_file", { path });
       setDocument(result.document);
       setSavedContent(result.document.content);
+      setAssetRevision((previous) => previous + 1);
       setSelection("");
       setQuestion("");
       rememberLastFile(result.document.path);
@@ -1103,6 +1131,8 @@ export function MarkdownPanel() {
           document={document}
           isDirty={canSave}
           savingDocument={savingDocument}
+          refreshingDocument={refreshingDocument}
+          canRefresh={canRefresh}
           workspaceMode={workspaceMode}
           previewTheme={previewTheme}
           fontScaleLabel={fontScaleLabel}
@@ -1111,6 +1141,10 @@ export function MarkdownPanel() {
           onDecreaseFontScale={() => setFontScale((previous) => stepMarkdownFontScale(previous, -1))}
           onIncreaseFontScale={() => setFontScale((previous) => stepMarkdownFontScale(previous, 1))}
           onResetFontScale={() => setFontScale(DEFAULT_MARKDOWN_FONT_SCALE)}
+          onRefresh={() => {
+            setDocumentError(null);
+            void refreshNow();
+          }}
           onSave={() => {
             void saveDocument();
           }}
@@ -1170,6 +1204,7 @@ export function MarkdownPanel() {
                   content={document.content}
                   sourcePath={document.path}
                   themeType={currentThemeType}
+                  assetRevision={assetRevision}
                 />
               </div>
             ) : workspaceMode === "split" ? (
@@ -1183,6 +1218,7 @@ export function MarkdownPanel() {
                   placeholder={t("markdown.reader.editPlaceholder")}
                   documentPath={document.path}
                   fontScale={fontScale}
+                  assetRevision={assetRevision}
                   focusToken={editorFocusToken}
                   onChange={handleEditorContentChange}
                   onSelectionChange={handleEditorSelectionChange}
@@ -1200,6 +1236,7 @@ export function MarkdownPanel() {
                   placeholder={t("markdown.reader.editPlaceholder")}
                   documentPath={document.path}
                   fontScale={fontScale}
+                  assetRevision={assetRevision}
                   focusToken={editorFocusToken}
                   onChange={handleEditorContentChange}
                   onSelectionChange={handleEditorSelectionChange}

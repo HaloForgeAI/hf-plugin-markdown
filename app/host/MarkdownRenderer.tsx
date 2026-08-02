@@ -5,6 +5,7 @@ import "../vditorLocalAssets";
 import Vditor from "../vendor/vditor/dist/index.js";
 import { VDITOR_CDN, VDITOR_ZH_CN_I18N } from "../vditorConfig";
 import { getMarkdownCodeTheme, queueMarkdownCodeHighlight } from "../markdown/codeHighlight";
+import { appendLocalAssetRevision } from "../markdown/localAssetRevision";
 
 interface MarkdownRendererProps {
   content: string;
@@ -13,6 +14,7 @@ interface MarkdownRendererProps {
   showStreamingCursor?: boolean;
   sourcePath?: string;
   themeType?: "light" | "dark";
+  assetRevision?: string | number;
 }
 
 export const MarkdownRenderer = memo(function MarkdownRenderer({
@@ -22,6 +24,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   showStreamingCursor,
   sourcePath,
   themeType = "light",
+  assetRevision,
 }: MarkdownRendererProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const previewId = useMemo(() => `hf-md-preview-${crypto.randomUUID()}`, []);
@@ -61,7 +64,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       },
       after: () => {
         if (cancelled) return;
-        rewriteRenderedDom(root, sourcePath);
+        rewriteRenderedDom(root, sourcePath, assetRevision);
         cancelHighlight?.();
         cancelHighlight = queueMarkdownCodeHighlight(root, themeType);
       },
@@ -76,7 +79,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       cancelHighlight?.();
       root.innerHTML = "";
     };
-  }, [content, sourcePath, themeType]);
+  }, [assetRevision, content, sourcePath, themeType]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -120,7 +123,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    const observer = new MutationObserver(() => rewriteRenderedDom(root, sourcePath));
+    const observer = new MutationObserver(() => rewriteRenderedDom(root, sourcePath, assetRevision));
     observer.observe(root, {
       childList: true,
       subtree: true,
@@ -128,7 +131,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       attributeFilter: ["src", "href"],
     });
     return () => observer.disconnect();
-  }, [sourcePath]);
+  }, [assetRevision, sourcePath]);
 
   return (
     <div className="markdown-body text-sm leading-relaxed text-foreground">
@@ -147,7 +150,11 @@ const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "flac", "aac", "m4a"]);
 
 type MediaKind = "image" | "video" | "audio";
 
-function rewriteRenderedDom(root: HTMLElement, sourcePath?: string) {
+function rewriteRenderedDom(
+  root: HTMLElement,
+  sourcePath?: string,
+  assetRevision?: string | number,
+) {
   root.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6").forEach((heading) => {
     if (heading.id) return;
     const base = slugifyHeading(heading.textContent ?? "");
@@ -182,7 +189,7 @@ function rewriteRenderedDom(root: HTMLElement, sourcePath?: string) {
     const mediaKind = detectMediaKindFromSrc(raw);
     if (mediaKind !== "image") {
       const replacement = document.createElement(mediaKind === "video" ? "video" : "audio");
-      replacement.src = resolveMarkdownAssetSrc(raw, sourcePath) ?? raw;
+      replacement.src = resolveMarkdownAssetSrc(raw, sourcePath, assetRevision) ?? raw;
       replacement.setAttribute("controls", "");
       replacement.setAttribute("preload", "metadata");
       replacement.className = mediaKind === "video"
@@ -199,7 +206,7 @@ function rewriteRenderedDom(root: HTMLElement, sourcePath?: string) {
       return;
     }
 
-    const resolved = resolveMarkdownAssetSrc(raw, sourcePath);
+    const resolved = resolveMarkdownAssetSrc(raw, sourcePath, assetRevision);
     if (resolved && img.getAttribute("src") !== resolved) {
       img.setAttribute("src", resolved);
     }
@@ -359,12 +366,16 @@ function fileUrlToLocalPath(value: string): string | undefined {
   }
 }
 
-function convertLocalAssetSrc(filePath: string, suffix = ""): string {
+function convertLocalAssetSrc(
+  filePath: string,
+  suffix = "",
+  assetRevision?: string | number,
+): string {
   const normalizedPath = decodePath(filePath);
   try {
-    return `${convertFileSrc(normalizedPath)}${suffix}`;
+    return appendLocalAssetRevision(`${convertFileSrc(normalizedPath)}${suffix}`, assetRevision);
   } catch {
-    return `${toFileUrl(normalizedPath).toString()}${suffix}`;
+    return appendLocalAssetRevision(`${toFileUrl(normalizedPath).toString()}${suffix}`, assetRevision);
   }
 }
 
@@ -391,7 +402,11 @@ function resolveMarkdownLink(href: string | undefined, sourcePath?: string): str
   }
 }
 
-function resolveMarkdownAssetSrc(rawSrc: string | undefined, sourcePath?: string): string | undefined {
+function resolveMarkdownAssetSrc(
+  rawSrc: string | undefined,
+  sourcePath?: string,
+  assetRevision?: string | number,
+): string | undefined {
   if (!rawSrc) return rawSrc;
   const trimmed = rawSrc.trim();
   if (!trimmed) return rawSrc;
@@ -400,7 +415,7 @@ function resolveMarkdownAssetSrc(rawSrc: string | undefined, sourcePath?: string
     try {
       const url = new URL(trimmed);
       const filePath = fileUrlToLocalPath(trimmed);
-      return filePath ? convertLocalAssetSrc(filePath, `${url.search}${url.hash}`) : trimmed;
+      return filePath ? convertLocalAssetSrc(filePath, `${url.search}${url.hash}`, assetRevision) : trimmed;
     } catch {
       return trimmed;
     }
@@ -409,10 +424,10 @@ function resolveMarkdownAssetSrc(rawSrc: string | undefined, sourcePath?: string
   const localSrc = splitPathSuffix(trimmed);
   const decodedLocalPath = decodePath(localSrc.path);
   if (isAbsoluteLocalPath(decodedLocalPath)) {
-    return convertLocalAssetSrc(decodedLocalPath, localSrc.suffix);
+    return convertLocalAssetSrc(decodedLocalPath, localSrc.suffix, assetRevision);
   }
   if (isAbsoluteLocalPath(localSrc.path)) {
-    return convertLocalAssetSrc(localSrc.path, localSrc.suffix);
+    return convertLocalAssetSrc(localSrc.path, localSrc.suffix, assetRevision);
   }
 
   if (
@@ -433,7 +448,7 @@ function resolveMarkdownAssetSrc(rawSrc: string | undefined, sourcePath?: string
     const baseUrl = new URL("./", toFileUrl(sourcePath));
     const resolvedUrl = new URL(localSrc.path.replace(/\\/g, "/"), baseUrl);
     const filePath = fileUrlToLocalPath(resolvedUrl.toString());
-    return filePath ? convertLocalAssetSrc(filePath, localSrc.suffix) : trimmed;
+    return filePath ? convertLocalAssetSrc(filePath, localSrc.suffix, assetRevision) : trimmed;
   } catch {
     return trimmed;
   }

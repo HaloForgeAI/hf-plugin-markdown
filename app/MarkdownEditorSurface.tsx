@@ -12,6 +12,7 @@ import "./vendor/vditor/dist/index.css";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getMarkdownCodeTheme, queueMarkdownCodeHighlight } from "./markdown/codeHighlight";
+import { appendLocalAssetRevision } from "./markdown/localAssetRevision";
 import type { MarkdownHeading } from "./markdown/types";
 import { isUntitledPath, markdownInvoke } from "./markdown/utils";
 import { useMarkdownT } from "./i18n";
@@ -58,6 +59,7 @@ interface MarkdownEditorSurfaceProps {
   placeholder: string;
   documentPath: string | null;
   fontScale: number;
+  assetRevision?: string | number;
   focusToken?: string;
   variant?: "standalone" | "split";
   onChange: (value: string) => void;
@@ -89,6 +91,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
   placeholder,
   documentPath,
   fontScale,
+  assetRevision,
   focusToken,
   variant = "standalone",
   onChange,
@@ -120,6 +123,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
   const pendingHeadingJumpRef = useRef<number | null>(null);
   const sourcePathRef = useRef(_sourcePath);
   const themeTypeRef = useRef(_themeType);
+  const assetRevisionRef = useRef(assetRevision);
   const pendingInitialValueRef = useRef(value);
   const cancelHighlightRef = useRef<(() => void) | null>(null);
   const selectionGestureUntilRef = useRef(0);
@@ -155,6 +159,13 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
   useEffect(() => {
     documentPathRef.current = documentPath;
   }, [documentPath]);
+
+  useEffect(() => {
+    assetRevisionRef.current = assetRevision;
+    const host = vditorHostRef.current;
+    if (!host) return;
+    normalizeVditorRenderedDom(host);
+  }, [assetRevision]);
 
   useImperativeHandle(ref, () => ({
     jumpToHeading: (index: number) => jumpToEditorHeading(index),
@@ -561,7 +572,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
 
       const mediaKind = detectMediaKindFromSrc(raw);
       if (mediaKind !== "image") {
-        const resolved = resolveMarkdownAssetSrc(raw, sourcePathRef.current) ?? raw;
+        const resolved = resolveMarkdownAssetSrc(raw, sourcePathRef.current, assetRevisionRef.current) ?? raw;
         const replacement = document.createElement(mediaKind === "video" ? "video" : "audio");
         replacement.src = resolved;
         replacement.setAttribute("controls", "");
@@ -580,7 +591,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
         return;
       }
 
-      const resolved = resolveMarkdownAssetSrc(raw, sourcePathRef.current);
+      const resolved = resolveMarkdownAssetSrc(raw, sourcePathRef.current, assetRevisionRef.current);
       if (resolved && img.getAttribute("src") !== resolved) {
         img.setAttribute("src", resolved);
       }
@@ -1273,20 +1284,27 @@ function isAbsoluteLocalPath(value: string): boolean {
   return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value);
 }
 
-function resolveMarkdownAssetSrc(rawSrc: string | undefined, sourcePath: string | null | undefined): string | undefined {
+function resolveMarkdownAssetSrc(
+  rawSrc: string | undefined,
+  sourcePath: string | null | undefined,
+  assetRevision?: string | number,
+): string | undefined {
   if (!rawSrc) return rawSrc;
   const trimmed = rawSrc.trim();
   if (!trimmed) return rawSrc;
   if (trimmed.startsWith("file:")) {
     try {
-      return convertFileSrc(decodeURIComponent(new URL(trimmed).pathname));
+      return appendLocalAssetRevision(
+        convertFileSrc(decodeURIComponent(new URL(trimmed).pathname)),
+        assetRevision,
+      );
     } catch {
       return trimmed;
     }
   }
   if (isAbsoluteLocalPath(trimmed)) {
     try {
-      return convertFileSrc(trimmed);
+      return appendLocalAssetRevision(convertFileSrc(trimmed), assetRevision);
     } catch {
       return trimmed;
     }
@@ -1309,7 +1327,7 @@ function resolveMarkdownAssetSrc(rawSrc: string | undefined, sourcePath: string 
   const joined = `${parentDir}/${cleaned}`.replace(/\/+/g, "/");
 
   try {
-    return convertFileSrc(joined);
+    return appendLocalAssetRevision(convertFileSrc(joined), assetRevision);
   } catch {
     return trimmed;
   }
