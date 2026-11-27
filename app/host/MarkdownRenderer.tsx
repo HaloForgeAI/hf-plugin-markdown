@@ -134,7 +134,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   }, [assetRevision, sourcePath]);
 
   return (
-    <div className="markdown-body text-sm leading-relaxed text-foreground">
+    <div className="markdown-body leading-relaxed text-foreground">
       <div id={previewId} ref={rootRef} />
       {afterContent}
       {(showStreamingCursor ?? isStreaming) && (
@@ -147,6 +147,18 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 const ABSOLUTE_URL_RE = /^[a-zA-Z][a-zA-Z0-9+\-.]*:/;
 const VIDEO_EXTENSIONS = new Set(["mp4", "webm", "ogg", "ogv", "mov", "m4v"]);
 const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "flac", "aac", "m4a"]);
+const SPECIAL_RENDER_LANGUAGES = new Set([
+  "abc",
+  "echarts",
+  "flowchart",
+  "graphviz",
+  "markmap",
+  "math",
+  "mermaid",
+  "mindmap",
+  "plantuml",
+  "smiles",
+]);
 
 type MediaKind = "image" | "video" | "audio";
 
@@ -166,6 +178,31 @@ function rewriteRenderedDom(
       index += 1;
     }
     heading.id = id;
+  });
+
+  root.querySelectorAll<HTMLTableElement>("table").forEach((table) => {
+    const parent = table.parentElement;
+    if (!parent || parent.classList.contains("hf-md-table-wrap")) return;
+    const cols = table.querySelectorAll("thead tr:first-child th, tbody tr:first-child td, tr:first-child th, tr:first-child td").length;
+    const wrap = document.createElement("div");
+    wrap.className = cols >= 5 ? "hf-md-table-wrap hf-md-table-wrap--wide" : "hf-md-table-wrap";
+    wrap.setAttribute("data-cols", String(cols));
+    parent.insertBefore(wrap, table);
+    wrap.appendChild(table);
+  });
+
+  root.querySelectorAll<HTMLElement>("pre").forEach((pre) => {
+    const code = pre.querySelector<HTMLElement>(":scope > code");
+    if (!code) return;
+    const langClass = Array.from(code.classList).find((className) => className.startsWith("language-"));
+    const lang = langClass?.slice("language-".length).toLowerCase() ?? "";
+    if (lang && !SPECIAL_RENDER_LANGUAGES.has(lang)) {
+      if (pre.getAttribute("data-hf-lang") !== lang) {
+        pre.setAttribute("data-hf-lang", lang);
+      }
+    } else if (pre.hasAttribute("data-hf-lang")) {
+      pre.removeAttribute("data-hf-lang");
+    }
   });
 
   root.querySelectorAll<HTMLImageElement>("img").forEach((img) => {

@@ -12,6 +12,7 @@ import "./vendor/vditor/dist/index.css";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getMarkdownCodeTheme, queueMarkdownCodeHighlight } from "./markdown/codeHighlight";
+import { clearLiveCodeHighlights, syncLiveCodeHighlights } from "./markdown/liveCodeHighlight";
 import { appendLocalAssetRevision } from "./markdown/localAssetRevision";
 import type { MarkdownHeading } from "./markdown/types";
 import { isUntitledPath, markdownInvoke } from "./markdown/utils";
@@ -30,7 +31,7 @@ type EditorMode = "ir" | "sv" | "wysiwyg";
 type VditorInternal = {
   currentMode?: EditorMode;
   sv?: { element: HTMLElement };
-  ir?: { element: HTMLElement };
+  ir?: { element: HTMLElement; preventInput?: boolean };
   wysiwyg?: { element: HTMLElement };
   element?: HTMLElement;
   preview?: { element: HTMLElement; previewElement: HTMLElement };
@@ -126,6 +127,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
   const assetRevisionRef = useRef(assetRevision);
   const pendingInitialValueRef = useRef(value);
   const cancelHighlightRef = useRef<(() => void) | null>(null);
+  const liveHighlightFrameRef = useRef<number | null>(null);
   const selectionGestureUntilRef = useRef(0);
 
   useEffect(() => {
@@ -206,7 +208,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       preview: {
         actions: [],
         delay: 80,
-        maxWidth: isSplitMode ? 760 : 800,
+        maxWidth: isSplitMode ? 1200 : 920,
         mode: isSplitMode ? "both" : "editor",
         theme: {
           current: _themeType === "dark" ? "dark" : "light",
@@ -376,6 +378,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
     const getLanguageHintElement = (): HTMLElement | null => {
       const hint = host.querySelector<HTMLElement>(".vditor-content > .vditor-hint");
       if (!hint || getComputedStyle(hint).display === "none") return null;
+      if (!hint.querySelector("button")) return null;
       return hint;
     };
     const handleHintKeydown = (event: KeyboardEvent) => {
@@ -405,7 +408,161 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       buttons[nextIndex].classList.add("vditor-hint--current");
       buttons[nextIndex].scrollIntoView({ block: "nearest" });
     };
+
+    let suppressCodeBlockEnterInputUntil = 0;
+
+    const getActiveExpandedCodeBlock = (): {
+      blockEl: HTMLElement;
+      preEl: HTMLElement;
+      codeEl: HTMLElement;
+      range: Range;
+      sel: Selection;
+    } | null => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return null;
+      const range = sel.getRangeAt(0);
+      const startEl = range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startContainer.parentElement
+        : (range.startContainer as HTMLElement | null);
+      if (!startEl || !host.contains(startEl)) return null;
+      if (startEl.closest("[data-type='code-block-info']")) return null;
+
+      const blockEl = startEl.closest<HTMLElement>(".vditor-ir__node--expand[data-type='code-block']");
+      const preEl = blockEl?.querySelector<HTMLElement>(":scope > pre.vditor-ir__marker--pre");
+      const codeEl = preEl?.querySelector<HTMLElement>(":scope > code");
+      if (!preEl || !blockEl || !codeEl) return null;
+      return { blockEl, preEl, codeEl, range, sel };
+    };
+
+    const syncExpandedCodeBlockPreview = (blockEl: HTMLElement, codeEl: HTMLElement) => {
+      const previewCode = blockEl.querySelector<HTMLElement>(":scope > .vditor-ir__preview code");
+      if (previewCode && blockEl.getAttribute("data-hf-code-kind") === "code") {
+        previewCode.textContent = codeEl.textContent ?? "";
+        previewCode.classList.remove("hljs");
+        queueEditorHighlight(host);
+      }
+    };
+
+    // Handle Enter inside an expanded IR code block directly without letting
+    // Vditor destroy/rebuild the block via `SpinVditorIRDOM` (and prevent any
+    // follow-up `insertParagraph` input event from merging the previous sibling
+    // code block). Keeps a single clean text node, preserves line indentation,
+    // updates preview & markdown state, and refreshes live syntax colors.
+    const handleCodeBlockEnter = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.isComposing || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (getLanguageHintElement()) return;
+
+      const active = getActiveExpandedCodeBlock();
+      if (!active) return;
+      const { blockEl, codeEl, range, sel } = active;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      suppressCodeBlockEnterInputUntil = Date.now() + 120;
+
+      const internal = getInternalVditor(editor);
+      if (internal?.ir) {
+        internal.ir.preventInput = true;
+      }
+
+      const rawText = codeEl.textContent ?? "";
+      let startOffset = getTextOffset(codeEl, range.startContainer, range.startOffset);
+      let endOffset = getTextOffset(codeEl, range.endContainer, range.endOffset);
+      if (startOffset === null) {
+        startOffset = range.startContainer === codeEl && range.startOffset === 0 ? 0 : rawText.length;
+      }
+      if (endOffset === null) {
+        endOffset = startOffset;
+      }
+      if (startOffset > endOffset) {
+        [startOffset, endOffset] = [endOffset, startOffset];
+      }
+
+      // Lute keeps a trailing sentinel `\n` inside `<code>`. If the caret was
+      // placed after that trailing `\n`, clamp just before it so pressing Enter
+      // adds exactly one new line instead of two.
+      if (rawText.endsWith("\n") && startOffset === rawText.length && endOffset === rawText.length) {
+        startOffset = rawText.length - 1;
+        endOffset = rawText.length - 1;
+      }
+
+      const before = rawText.slice(0, startOffset);
+      let after = rawText.slice(endOffset);
+      if (!after.endsWith("\n")) {
+        after += "\n";
+      }
+
+      const currentLineStart = before.lastIndexOf("\n") + 1;
+      const leadingIndent = before.slice(currentLineStart).match(/^[ \t]+/)?.[0] ?? "";
+      const insertion = `\n${leadingIndent}`;
+      const nextText = `${before}${insertion}${after}`;
+      const nextCaret = before.length + insertion.length;
+
+      codeEl.textContent = nextText;
+      const textNode = codeEl.firstChild as Text | null;
+      if (textNode) {
+        const nextRange = document.createRange();
+        const clampedCaret = Math.max(0, Math.min(nextCaret, textNode.length));
+        nextRange.setStart(textNode, clampedCaret);
+        nextRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(nextRange);
+      }
+
+      blockEl.classList.add("vditor-ir__node--expand");
+      syncExpandedCodeBlockPreview(blockEl, codeEl);
+      syncLiveCodeHighlights(host, themeTypeRef.current);
+
+      if (vditorRef.current === editor && isVditorReadyRef.current) {
+        const nextMarkdown = editor.getValue();
+        if (nextMarkdown !== valueRef.current) {
+          valueRef.current = nextMarkdown;
+          onChangeRef.current(nextMarkdown);
+        }
+      }
+    };
+
+    const handleCodeBlockBeforeInput = (event: Event) => {
+      const inputEvent = event as InputEvent;
+      if (
+        Date.now() < suppressCodeBlockEnterInputUntil &&
+        (inputEvent.inputType === "insertParagraph" || inputEvent.inputType === "insertLineBreak")
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    // For normal typing/deletion inside an expanded regular code block, use
+    // Vditor's native `ir.preventInput = true` flag so Vditor skips tearing
+    // down and re-spinning the block DOM via Lute while still recording Undo
+    // snapshots and firing `onChange`. Live syntax colors refresh immediately.
+    const handleCodeBlockInput = (event: Event) => {
+      const inputEvent = event as InputEvent;
+      if (
+        Date.now() < suppressCodeBlockEnterInputUntil &&
+        (inputEvent.inputType === "insertParagraph" || inputEvent.inputType === "insertLineBreak")
+      ) {
+        event.stopPropagation();
+        return;
+      }
+
+      const active = getActiveExpandedCodeBlock();
+      if (!active || active.blockEl.getAttribute("data-hf-code-kind") !== "code") return;
+
+      const internal = getInternalVditor(editor);
+      if (internal?.ir) {
+        internal.ir.preventInput = true;
+      }
+      syncExpandedCodeBlockPreview(active.blockEl, active.codeEl);
+      syncLiveCodeHighlights(host, themeTypeRef.current);
+    };
+
     host.addEventListener("keydown", handleHintKeydown, true);
+    host.addEventListener("keydown", handleCodeBlockEnter, true);
+    host.addEventListener("beforeinput", handleCodeBlockBeforeInput, true);
+    host.addEventListener("input", handleCodeBlockInput, true);
 
     host.addEventListener("click", handleClick, true);
     host.addEventListener("dblclick", handleSelectionGesture, true);
@@ -419,23 +576,36 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       });
     };
 
+    const handleSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || !sel.anchorNode || !host.contains(sel.anchorNode)) return;
+      scheduleLiveCodeHighlight(host);
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+
     host.addEventListener("focusin", handleEditorActivity, true);
     host.addEventListener("keyup", handleEditorActivity, true);
 
     const observer = new MutationObserver(() => {
       normalizeVditorRenderedDom(host);
       renderPendingVditorPreviews(host);
+      scheduleLiveCodeHighlight(host);
       emitActiveHeadingChange();
     });
     observer.observe(host, {
       childList: true,
       subtree: true,
+      characterData: true,
       attributes: true,
       attributeFilter: ["src", "href", "style", "class", "data-render"],
     });
 
     return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange);
       host.removeEventListener("keydown", handleHintKeydown, true);
+      host.removeEventListener("keydown", handleCodeBlockEnter, true);
+      host.removeEventListener("beforeinput", handleCodeBlockBeforeInput, true);
+      host.removeEventListener("input", handleCodeBlockInput, true);
       host.removeEventListener("click", handleClick, true);
       host.removeEventListener("dblclick", handleSelectionGesture, true);
       host.removeEventListener("selectstart", handleSelectionGesture, true);
@@ -449,6 +619,11 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
       });
       cancelHighlightRef.current?.();
       cancelHighlightRef.current = null;
+      if (liveHighlightFrameRef.current !== null) {
+        window.cancelAnimationFrame(liveHighlightFrameRef.current);
+        liveHighlightFrameRef.current = null;
+      }
+      clearLiveCodeHighlights();
       observer.disconnect();
       try {
         if (isVditorReadyRef.current && editor.vditor) {
@@ -603,6 +778,21 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
     // (Typora behavior). Force-removing it made every marker always visible.
 
     normalizeEditableCodeBlocks(host);
+    normalizeSplitPreviewDom(host);
+    scheduleLiveCodeHighlight(host);
+  };
+
+  const scheduleLiveCodeHighlight = (host: HTMLElement) => {
+    if (liveHighlightFrameRef.current !== null) return;
+    liveHighlightFrameRef.current = window.requestAnimationFrame(() => {
+      liveHighlightFrameRef.current = null;
+      const applied = syncLiveCodeHighlights(host, themeTypeRef.current);
+      if (!applied && host.querySelector(".vditor-ir__node--expand[data-type='code-block']")) {
+        // Trigger Vditor's local hljs script loader if an expanded code block
+        // appeared before highlight.js finished initializing.
+        queueEditorHighlight(host);
+      }
+    });
   };
 
   const queueEditorHighlight = (host: HTMLElement) => {
@@ -906,7 +1096,7 @@ export const MarkdownEditorSurface = forwardRef<MarkdownEditorSurfaceHandle, Mar
     <div
       className={clsx(
         "hf-markdown-editor relative h-full min-h-0 overflow-hidden",
-        variant === "standalone" ? "hf-markdown-editor--standalone rounded-[28px] border" : "hf-markdown-editor--split",
+        variant === "standalone" ? "hf-markdown-editor--standalone rounded-2xl border" : "hf-markdown-editor--split rounded-2xl border",
       )}
       style={surfaceStyle}
     >
@@ -1211,12 +1401,36 @@ function getTextOffset(root: Node, targetNode: Node, targetNodeOffset: number) {
   return null;
 }
 
-// Toggle a wysiwyg code block between its editable source (`<pre>`) and its
-// highlighted preview so only one shows at a time. Without this, both the raw
-// source and the rendered preview render together (the code block appears as
-// two duplicate rows). The old inline language <input> control is intentionally
-// gone — vditor's native code block handles the language.
+// Keep code blocks unified as a single card while editing:
+// - In IR mode, tag each `code-block` node with `data-hf-code-kind` ("diagram"
+//   for mermaid/math/echarts/etc. that need live side-by-side preview, "code"
+//   for standard code blocks whose duplicate `.vditor-ir__preview` is hidden
+//   while `.vditor-ir__node--expand` is active) and `data-hf-lang` for the
+//   idle language badge.
+// - In WYSIWYG mode, toggle between the editable source and preview cleanly.
 function normalizeEditableCodeBlocks(host: HTMLElement) {
+  host.querySelectorAll<HTMLElement>(".vditor-ir__node[data-type='code-block']").forEach((block) => {
+    const infoNode = block.querySelector<HTMLElement>(
+      ":scope > span[data-type='code-block-info'], :scope > span.vditor-ir__marker--info",
+    );
+    const previewCode = block.querySelector<HTMLElement>(":scope > .vditor-ir__preview pre > code, :scope > .vditor-ir__preview code");
+    const rawInfo = (infoNode?.textContent ?? "").replace(/\u200b/g, "").trim();
+    const firstToken = rawInfo.split(/\s+/)[0]?.toLowerCase() ?? "";
+    const lang = firstToken || (previewCode ? getLanguageClass(previewCode) : "");
+    const kind = lang && SPECIAL_RENDER_LANGUAGES.has(lang) ? "diagram" : "code";
+
+    if (block.getAttribute("data-hf-code-kind") !== kind) {
+      block.setAttribute("data-hf-code-kind", kind);
+    }
+    if (lang) {
+      if (block.getAttribute("data-hf-lang") !== lang) {
+        block.setAttribute("data-hf-lang", lang);
+      }
+    } else if (block.hasAttribute("data-hf-lang")) {
+      block.removeAttribute("data-hf-lang");
+    }
+  });
+
   host.querySelectorAll<HTMLElement>(".vditor-wysiwyg__block[data-type='code-block']").forEach((block) => {
     const sourcePre = block.querySelector<HTMLElement>(":scope > pre:first-child");
     const preview = block.querySelector<HTMLElement>(":scope > .vditor-wysiwyg__preview");
@@ -1229,6 +1443,37 @@ function normalizeEditableCodeBlocks(host: HTMLElement) {
 
     // Strip any legacy inline language control left over from older builds.
     sourcePre.querySelector<HTMLElement>(":scope > .hf-code-language-inline")?.remove();
+  });
+}
+
+// Enhance read-only Split preview DOM (`.vditor-preview`) without ever
+// mutating contenteditable `.vditor-ir` / `.vditor-wysiwyg` table structure.
+function normalizeSplitPreviewDom(host: HTMLElement) {
+  const previewRoot = host.querySelector<HTMLElement>(".vditor-preview .vditor-reset");
+  if (!previewRoot) return;
+
+  previewRoot.querySelectorAll<HTMLTableElement>("table").forEach((table) => {
+    const parent = table.parentElement;
+    if (!parent || parent.classList.contains("hf-md-table-wrap")) return;
+    const cols = table.querySelectorAll("thead tr:first-child th, tbody tr:first-child td, tr:first-child th, tr:first-child td").length;
+    const wrap = document.createElement("div");
+    wrap.className = cols >= 5 ? "hf-md-table-wrap hf-md-table-wrap--wide" : "hf-md-table-wrap";
+    wrap.setAttribute("data-cols", String(cols));
+    parent.insertBefore(wrap, table);
+    wrap.appendChild(table);
+  });
+
+  previewRoot.querySelectorAll<HTMLElement>("pre").forEach((pre) => {
+    const code = pre.querySelector<HTMLElement>(":scope > code");
+    if (!code) return;
+    const lang = getLanguageClass(code);
+    if (lang && !SPECIAL_RENDER_LANGUAGES.has(lang)) {
+      if (pre.getAttribute("data-hf-lang") !== lang) {
+        pre.setAttribute("data-hf-lang", lang);
+      }
+    } else if (pre.hasAttribute("data-hf-lang")) {
+      pre.removeAttribute("data-hf-lang");
+    }
   });
 }
 

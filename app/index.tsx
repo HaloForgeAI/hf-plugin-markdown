@@ -1,17 +1,12 @@
 import { definePlugin, registerPlugin } from "@haloforge/plugin-sdk";
 import {
   Component,
-  lazy,
-  Suspense,
   type ErrorInfo,
   type ReactNode,
 } from "react";
 import "./tailwind.css";
 import "./markdown.css";
-
-const LazyMarkdownPanel = lazy(() =>
-  import("./MarkdownPanel").then((module) => ({ default: module.MarkdownPanel })),
-);
+import { MarkdownPanel } from "./MarkdownPanel";
 
 interface MarkdownPluginErrorBoundaryState {
   error: Error | null;
@@ -52,15 +47,7 @@ class MarkdownPluginErrorBoundary extends Component<
 function MarkdownPluginPanel() {
   return (
     <MarkdownPluginErrorBoundary>
-      <Suspense
-        fallback={
-          <div className="flex h-full items-center justify-center bg-background text-sm text-foreground-secondary">
-            Loading Markdown workspace...
-          </div>
-        }
-      >
-        <LazyMarkdownPanel />
-      </Suspense>
+      <MarkdownPanel />
     </MarkdownPluginErrorBoundary>
   );
 }

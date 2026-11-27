@@ -1,5 +1,6 @@
 import Vditor from "../vendor/vditor/dist/index.js";
 import { VDITOR_CDN } from "../vditorConfig";
+import { syncLiveCodeHighlights } from "./liveCodeHighlight";
 
 type ThemeType = "light" | "dark";
 
@@ -32,10 +33,12 @@ export function queueMarkdownCodeHighlight(root: HTMLElement, themeType: ThemeTy
   const timers: number[] = [];
 
   runVditorHighlight(root, themeType);
+  syncLiveCodeHighlights(root, themeType);
   [0, 80, 220, 520].forEach((delay) => {
     timers.push(
       window.setTimeout(() => {
         runFallbackHighlight(root);
+        syncLiveCodeHighlights(root, themeType);
       }, delay),
     );
   });

@@ -1,26 +1,21 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type DragEvent,
-  type KeyboardEvent,
 } from "react";
-import { clearPendingPluginDeepLink, useHostEvent, usePluginDeepLink, usePluginWindowTitle } from "@haloforge/plugin-sdk";
+import { clearPendingPluginDeepLink, usePluginDeepLink, usePluginWindowTitle } from "@haloforge/plugin-sdk";
 import clsx from "clsx";
 import { useSidebarResize } from "./host/useSidebarResize";
 import { RefreshCw } from "lucide-react";
 import { MarkdownRenderer } from "./host/MarkdownRenderer";
 import { useAppStore } from "./host/appStore";
-import { useAIChatStore } from "./host/aichatStore";
 import { useThemeStore } from "./host/themeStore";
 import { getParentDirectory, pickFile, saveFile } from "./host/devkitDialogs";
-import type { ChatSession, ModelConfig, StreamChunk, StreamErrorEvent, StreamState } from "./host/types";
 import { MarkdownEditorSurface, type MarkdownEditorSurfaceHandle } from "./MarkdownEditorSurface";
 import { MarkdownSourceSurface } from "./MarkdownSourceSurface";
 import { useMarkdownT } from "./i18n";
-import { AssistantSidebar } from "./markdown/AssistantSidebar";
 import { MarkdownHeader } from "./markdown/MarkdownHeader";
 import { ReaderSidebar } from "./markdown/ReaderSidebar";
 import { FindBar } from "./markdown/FindBar";
@@ -28,8 +23,6 @@ import { ImageLightbox } from "./markdown/ImageLightbox";
 import { useDocumentRefresh } from "./markdown/useDocumentRefresh";
 import { applyFindHighlights, clearFindHighlights, computeMatchRanges, findApiSupported, scrollRangeIntoView } from "./markdown/findHighlight";
 import type {
-  AssistantIntent,
-  AssistantMessage,
   MarkdownDocument,
   RecentMarkdownFile,
   SaveDocumentResult,
@@ -37,86 +30,59 @@ import type {
 } from "./markdown/types";
 import {
   DEFAULT_MARKDOWN_FONT_SCALE,
-  buildAssistantPrompt,
-  buildDisplayPrompt,
   createUntitledDocument,
   deriveDocumentFromContent,
   formatMarkdownFontScale,
   isUntitledPath,
   getDroppedMarkdownPath,
-  getSelectionText,
   LAST_FILE_STORAGE_KEY,
   LEFT_SIDEBAR_COLLAPSED_STORAGE_KEY,
   loadMarkdownFontScale,
   loadCollapsedState,
   loadJsonStorage,
-  loadPreviewTheme,
-  loadSessionMap,
-  loadThreads,
   loadWorkspaceMode,
-  MARKDOWN_ASSISTANT_SYSTEM_PROMPT,
   MARKDOWN_FILTERS,
-  markdownInvoke,
-  MAX_SELECTION_CHARS,
   MARKDOWN_FONT_SCALE_STORAGE_KEY,
-  PREVIEW_THEME_STORAGE_KEY,
+  MARKDOWN_WHEEL_ZOOM_STEP,
+  markdownInvoke,
+  normalizeMarkdownFontScale,
   rememberLastFile,
-  resolvePreviewThemeClass,
-  RIGHT_SIDEBAR_COLLAPSED_STORAGE_KEY,
   saveJsonStorage,
-  saveSessionMap,
-  saveThreads,
   stepMarkdownFontScale,
   translateDocumentError,
-  trimStoredThread,
-  upsertAssistantMessage,
   WORKSPACE_MODE_STORAGE_KEY,
 } from "./markdown/utils";
 
 export function MarkdownPanel() {
   const t = useMarkdownT();
-  const openSettingsTab = useAppStore((s) => s.openSettingsTab);
   const activeModule = useAppStore((s) => s.activeModule);
   const pendingMarkdownOpenPath = useAppStore((s) => s.pendingMarkdownOpenPath);
   const clearPendingMarkdownOpenPath = useAppStore((s) => s.clearPendingMarkdownOpenPath);
-  const fetchModelConfigs = useAIChatStore((s) => s.fetchModelConfigs);
-  const modelConfigs = useAIChatStore((s) => s.modelConfigs);
-  const selectedModelId = useAIChatStore((s) => s.selectedModelId);
-  const createAssistantSession = useAIChatStore((s) => s.createSession);
-  const getAssistantStreamState = useAIChatStore((s) => s.getStreamState);
-  const sendAssistantMessage = useAIChatStore((s) => s.sendMessage);
   const currentThemeType = useThemeStore((s) => s.currentTheme.theme_type);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const mainContentRef = useRef<HTMLElement | null>(null);
   const editorSurfaceRef = useRef<MarkdownEditorSurfaceHandle | null>(null);
   const initialRestoreAttemptedRef = useRef(false);
-  const currentAiSessionIdRef = useRef<string | null>(null);
   const scrollSyncFrameRef = useRef<number | null>(null);
   const suppressActiveHeadingUntilRef = useRef(0);
+  const zoomToastTimerRef = useRef<number | null>(null);
 
   const [recentFiles, setRecentFiles] = useState<RecentMarkdownFile[]>([]);
   const [document, setDocument] = useState<MarkdownDocument | null>(null);
   const [savedContent, setSavedContent] = useState<string | null>(null);
-  const [selection, setSelection] = useState("");
-  const [question, setQuestion] = useState("");
-  const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
   const [loadingDocument, setLoadingDocument] = useState(false);
   const [savingDocument, setSavingDocument] = useState(false);
   const [documentError, setDocumentError] = useState<string | null>(null);
   const [assetRevision, setAssetRevision] = useState(0);
-  const [assistantError, setAssistantError] = useState<string | null>(null);
-  const [isAssistantStreaming, setIsAssistantStreaming] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [previewTheme, setPreviewTheme] = useState(loadPreviewTheme());
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>(loadWorkspaceMode());
   const [fontScale, setFontScale] = useState(loadMarkdownFontScale());
+  const fontScaleRef = useRef(fontScale);
+  const [zoomToastVisible, setZoomToastVisible] = useState(false);
   const [pendingAction, setPendingAction] = useState<
     { kind: "open"; path: string } | { kind: "createUntitled" } | null
   >(null);
-  const [isSelectionCollapsed, setIsSelectionCollapsed] = useState(true);
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(loadCollapsedState(LEFT_SIDEBAR_COLLAPSED_STORAGE_KEY));
-  const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(loadCollapsedState(RIGHT_SIDEBAR_COLLAPSED_STORAGE_KEY));
-  const [assistantSessionId, setAssistantSessionId] = useState<string | null>(null);
   const [activeHeadingIndex, setActiveHeadingIndex] = useState<number | null>(null);
   const [previewImageSrc, setPreviewImageSrc] = useState<string | null>(null);
   const [findOpen, setFindOpen] = useState(false);
@@ -126,11 +92,6 @@ export function MarkdownPanel() {
   const findRangesRef = useRef<Range[]>([]);
   const findIndexRef = useRef(0);
   const contentAreaRef = useRef<HTMLDivElement | null>(null);
-
-  const activeModel = useMemo<ModelConfig | null>(() => {
-    if (modelConfigs.length === 0) return null;
-    return modelConfigs.find((item) => item.id === selectedModelId) ?? modelConfigs[0];
-  }, [modelConfigs, selectedModelId]);
 
   const isUntitled = document ? isUntitledPath(document.path) : false;
   // Guard semantics: an untitled buffer is "dirty" only once it has content,
@@ -149,10 +110,28 @@ export function MarkdownPanel() {
   const windowTitle = document?.name?.trim() || null;
   const fontScaleLabel = formatMarkdownFontScale(fontScale);
 
+  const flashZoomToast = useCallback(() => {
+    setZoomToastVisible(true);
+    if (zoomToastTimerRef.current !== null) {
+      window.clearTimeout(zoomToastTimerRef.current);
+    }
+    zoomToastTimerRef.current = window.setTimeout(() => {
+      zoomToastTimerRef.current = null;
+      setZoomToastVisible(false);
+    }, 950);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (zoomToastTimerRef.current !== null) {
+        window.clearTimeout(zoomToastTimerRef.current);
+      }
+    };
+  }, []);
+
   const applyRefreshedDocument = useCallback((refreshedDocument: MarkdownDocument) => {
     setDocument(refreshedDocument);
     setSavedContent(refreshedDocument.content);
-    setSelection("");
     setAssetRevision((previous) => previous + 1);
   }, []);
 
@@ -180,34 +159,19 @@ export function MarkdownPanel() {
     defaultWidth: 280, minWidth: 200, maxWidth: 480,
     storageKey: "hf-md-left-sidebar-width", direction: "right",
   });
-  const { width: rightWidth, isResizing: rightResizing, handleMouseDown: handleRightResize } = useSidebarResize({
-    defaultWidth: 360, minWidth: 260, maxWidth: 560,
-    storageKey: "hf-md-right-sidebar-width", direction: "left",
-  });
-
-  useEffect(() => {
-    currentAiSessionIdRef.current = assistantSessionId;
-  }, [assistantSessionId]);
-
-  useEffect(() => {
-    saveJsonStorage(PREVIEW_THEME_STORAGE_KEY, previewTheme);
-  }, [previewTheme]);
 
   useEffect(() => {
     saveJsonStorage(WORKSPACE_MODE_STORAGE_KEY, workspaceMode);
   }, [workspaceMode]);
 
   useEffect(() => {
+    fontScaleRef.current = fontScale;
     saveJsonStorage(MARKDOWN_FONT_SCALE_STORAGE_KEY, fontScale);
   }, [fontScale]);
 
   useEffect(() => {
     saveJsonStorage(LEFT_SIDEBAR_COLLAPSED_STORAGE_KEY, isLeftSidebarCollapsed);
   }, [isLeftSidebarCollapsed]);
-
-  useEffect(() => {
-    saveJsonStorage(RIGHT_SIDEBAR_COLLAPSED_STORAGE_KEY, isRightSidebarCollapsed);
-  }, [isRightSidebarCollapsed]);
 
   const loadRecentFiles = useCallback(async (options?: { preserveOrder?: boolean }) => {
     const result = await markdownInvoke<{ files: RecentMarkdownFile[] }>("md_recent_files");
@@ -227,45 +191,15 @@ export function MarkdownPanel() {
     return result.files;
   }, []);
 
-  const replaceCurrentThread = useCallback((path: string, clear = false) => {
-    if (clear) {
-      setAssistantMessages([]);
-      const threads = loadThreads();
-      delete threads[path];
-      saveThreads(threads);
-      return;
-    }
-    const threads = loadThreads();
-    setAssistantMessages(threads[path] ?? []);
-  }, []);
-
-  const bindAssistantSession = useCallback((path: string, sessionId: string | null) => {
-    currentAiSessionIdRef.current = sessionId;
-    setAssistantSessionId(sessionId);
-    const sessionMap = loadSessionMap();
-    if (sessionId) {
-      sessionMap[path] = sessionId;
-    } else {
-      delete sessionMap[path];
-    }
-    saveSessionMap(sessionMap);
-  }, []);
-
   const performOpenDocument = useCallback(async (path: string) => {
     setLoadingDocument(true);
     setDocumentError(null);
-    setAssistantError(null);
     try {
       const result = await markdownInvoke<{ document: MarkdownDocument }>("md_open_file", { path });
       setDocument(result.document);
       setSavedContent(result.document.content);
       setAssetRevision((previous) => previous + 1);
-      setSelection("");
-      setQuestion("");
       rememberLastFile(result.document.path);
-      currentAiSessionIdRef.current = null;
-      setAssistantSessionId(null);
-      replaceCurrentThread(result.document.path, true);
       await loadRecentFiles({ preserveOrder: true });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -273,7 +207,7 @@ export function MarkdownPanel() {
     } finally {
       setLoadingDocument(false);
     }
-  }, [loadRecentFiles, replaceCurrentThread, t]);
+  }, [loadRecentFiles, t]);
 
   const openDocument = useCallback(async (path: string) => {
     if (isDirty && document?.path !== path) {
@@ -321,12 +255,7 @@ export function MarkdownPanel() {
       });
       setDocument(result.document);
       setSavedContent(result.document.content);
-      setSelection("");
-      setQuestion("");
       rememberLastFile(result.document.path);
-      currentAiSessionIdRef.current = null;
-      setAssistantSessionId(null);
-      replaceCurrentThread(result.document.path, true);
       await loadRecentFiles({ preserveOrder: true });
       return true;
     } catch (error) {
@@ -336,7 +265,7 @@ export function MarkdownPanel() {
     } finally {
       setSavingDocument(false);
     }
-  }, [document, loadRecentFiles, replaceCurrentThread, t]);
+  }, [document, loadRecentFiles, t]);
 
   const saveDocument = useCallback(async (): Promise<boolean> => {
     if (!document) {
@@ -373,10 +302,6 @@ export function MarkdownPanel() {
   }, [document, handleSaveAs, isDirty, loadRecentFiles, t]);
 
   useEffect(() => {
-    void fetchModelConfigs();
-  }, [fetchModelConfigs]);
-
-  useEffect(() => {
     if (initialRestoreAttemptedRef.current) {
       return;
     }
@@ -404,35 +329,6 @@ export function MarkdownPanel() {
     void openDocument(pendingMarkdownOpenPath);
   }, [clearPendingMarkdownOpenPath, openDocument, pendingMarkdownOpenPath]);
 
-  const handleAssistantStreamChunk = useCallback((payload: unknown) => {
-    const chunk = payload as StreamChunk;
-    if (!currentAiSessionIdRef.current || chunk.session_id !== currentAiSessionIdRef.current) {
-      return;
-    }
-    setAssistantError(null);
-    setIsAssistantStreaming(!chunk.done);
-    setAssistantMessages((previous) => trimStoredThread(upsertAssistantMessage(previous, chunk)));
-  }, []);
-
-  const handleAssistantStreamError = useCallback((payload: unknown) => {
-    const streamError = payload as StreamErrorEvent;
-    if (!currentAiSessionIdRef.current || streamError.session_id !== currentAiSessionIdRef.current) {
-      return;
-    }
-    setIsAssistantStreaming(false);
-    setAssistantError(streamError.error || t("markdown.ai.error.streamFailed"));
-  }, [t]);
-
-  useHostEvent("aichat:stream-chunk", handleAssistantStreamChunk);
-  useHostEvent("aichat:stream-error", handleAssistantStreamError);
-
-  useEffect(() => {
-    if (!document?.path) return;
-    const threads = loadThreads();
-    threads[document.path] = trimStoredThread(assistantMessages);
-    saveThreads(threads);
-  }, [assistantMessages, document?.path]);
-
   useEffect(() => {
     const handleSaveShortcut = (event: globalThis.KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
@@ -458,7 +354,9 @@ export function MarkdownPanel() {
 
   useEffect(() => {
     const handleFontShortcut = (event: globalThis.KeyboardEvent) => {
-      if (!isActiveModule || !(event.metaKey || event.ctrlKey) || event.altKey) {
+      const root = mainContentRef.current;
+      const isVisible = Boolean(root && root.offsetParent !== null);
+      if ((!isActiveModule && !isVisible) || !(event.metaKey || event.ctrlKey) || event.altKey) {
         return;
       }
 
@@ -466,6 +364,7 @@ export function MarkdownPanel() {
         event.preventDefault();
         event.stopPropagation();
         setFontScale(DEFAULT_MARKDOWN_FONT_SCALE);
+        flashZoomToast();
         return;
       }
 
@@ -473,6 +372,7 @@ export function MarkdownPanel() {
         event.preventDefault();
         event.stopPropagation();
         setFontScale((previous) => stepMarkdownFontScale(previous, 1));
+        flashZoomToast();
         return;
       }
 
@@ -480,6 +380,7 @@ export function MarkdownPanel() {
         event.preventDefault();
         event.stopPropagation();
         setFontScale((previous) => stepMarkdownFontScale(previous, -1));
+        flashZoomToast();
       }
     };
 
@@ -487,7 +388,68 @@ export function MarkdownPanel() {
     return () => {
       window.removeEventListener("keydown", handleFontShortcut, true);
     };
-  }, [isActiveModule]);
+  }, [flashZoomToast, isActiveModule]);
+
+  // Ctrl / Cmd + mouse wheel (and trackpad pinch on both Chromium & macOS
+  // WKWebView) zoom across Read / Split / Write.
+  useEffect(() => {
+    const root = mainContentRef.current;
+    if (!root) return;
+
+    let accumulatedDelta = 0;
+    let lastWheelAt = 0;
+    let gestureBaseScale = fontScaleRef.current;
+
+    const handleWheelZoom = (event: WheelEvent) => {
+      if (previewImageSrc || root.offsetParent === null) return;
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (event.deltaY === 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const now = Date.now();
+      if (now - lastWheelAt > 140 || (accumulatedDelta !== 0 && Math.sign(event.deltaY) !== Math.sign(accumulatedDelta))) {
+        accumulatedDelta = 0;
+      }
+      lastWheelAt = now;
+      accumulatedDelta += event.deltaY;
+
+      // Discrete mouse wheels emit >=40px per notch (step immediately); smooth
+      // trackpad pinch/scroll emits small 1-6px deltas (accumulate cleanly).
+      if (Math.abs(accumulatedDelta) < 14) return;
+      const direction: -1 | 1 = accumulatedDelta < 0 ? 1 : -1;
+      accumulatedDelta = 0;
+
+      setFontScale((previous) => stepMarkdownFontScale(previous, direction, MARKDOWN_WHEEL_ZOOM_STEP));
+      flashZoomToast();
+    };
+
+    // macOS Safari / WKWebView native two-finger trackpad pinch gesture.
+    const handleGestureStart = (event: Event) => {
+      if (previewImageSrc || root.offsetParent === null) return;
+      event.preventDefault();
+      gestureBaseScale = fontScaleRef.current;
+    };
+
+    const handleGestureChange = (event: Event) => {
+      if (previewImageSrc || root.offsetParent === null) return;
+      const scale = (event as Event & { scale?: number }).scale;
+      if (typeof scale !== "number" || !Number.isFinite(scale) || scale <= 0) return;
+      event.preventDefault();
+      setFontScale(normalizeMarkdownFontScale(gestureBaseScale * scale));
+      flashZoomToast();
+    };
+
+    root.addEventListener("wheel", handleWheelZoom, { passive: false, capture: true });
+    root.addEventListener("gesturestart", handleGestureStart, { passive: false });
+    root.addEventListener("gesturechange", handleGestureChange, { passive: false });
+    return () => {
+      root.removeEventListener("wheel", handleWheelZoom, true);
+      root.removeEventListener("gesturestart", handleGestureStart);
+      root.removeEventListener("gesturechange", handleGestureChange);
+    };
+  }, [flashZoomToast, previewImageSrc]);
 
   useEffect(() => {
     findIndexRef.current = findIndex;
@@ -555,9 +517,7 @@ export function MarkdownPanel() {
     }
   }, [findOpen]);
 
-  // Unified image click-to-preview across read / split / write modes: a single
-  // capture-phase listener on the content area opens a lightbox for any image,
-  // so every mode behaves identically (vditor's own preview is disabled).
+  // Unified image click-to-preview across read / split / write modes.
   useEffect(() => {
     const root = mainContentRef.current;
     if (!root) return;
@@ -583,24 +543,10 @@ export function MarkdownPanel() {
     });
   }, []);
 
-  const handleEditorSelectionChange = useCallback((value: string) => {
-    setSelection(value.trim().slice(0, MAX_SELECTION_CHARS));
-  }, []);
-
-  const capturePreviewSelection = useCallback(() => {
-    setSelection(getSelectionText(previewRef.current).slice(0, MAX_SELECTION_CHARS));
-  }, []);
-
   const handleActiveHeadingChange = useCallback((index: number | null) => {
     if (Date.now() < suppressActiveHeadingUntilRef.current) return;
     setActiveHeadingIndex((previous) => previous === index ? previous : index);
   }, []);
-
-  useEffect(() => {
-    if (selection) {
-      setIsSelectionCollapsed(true);
-    }
-  }, [selection]);
 
   useEffect(() => {
     setActiveHeadingIndex(null);
@@ -640,57 +586,6 @@ export function MarkdownPanel() {
       window.setTimeout(() => editorSurfaceRef.current?.jumpToHeading(index), 80);
     }
   }, [scrollPreviewHeading, workspaceMode]);
-
-  const hydrateAssistantStreamState = useCallback((streamState: StreamState) => {
-    setAssistantMessages((previous) => {
-      const existingIndex = previous.findIndex((message) => message.id === streamState.message_id);
-
-      if (existingIndex === -1) {
-        if (!streamState.content && !streamState.finished) {
-          return previous;
-        }
-
-        return trimStoredThread([
-          ...previous,
-          {
-            id: streamState.message_id,
-            role: "assistant",
-            content: streamState.content,
-            createdAt: streamState.started_at,
-            isStreaming: !streamState.finished,
-          },
-        ]);
-      }
-
-      const existing = previous[existingIndex];
-      if (existing.role !== "assistant") {
-        return previous;
-      }
-
-      if (existing.content.length >= streamState.content.length && existing.isStreaming === !streamState.finished) {
-        return previous;
-      }
-
-      const next = [...previous];
-      next[existingIndex] = {
-        ...existing,
-        content: streamState.content || existing.content,
-        isStreaming: !streamState.finished,
-        createdAt: existing.createdAt || streamState.started_at,
-      };
-      return trimStoredThread(next);
-    });
-
-    if (streamState.error) {
-      setAssistantError(streamState.error);
-      setIsAssistantStreaming(false);
-      return;
-    }
-
-    if (streamState.finished) {
-      setIsAssistantStreaming(false);
-    }
-  }, []);
 
   useEffect(() => {
     if (workspaceMode !== "read") return;
@@ -734,7 +629,7 @@ export function MarkdownPanel() {
       if (target) {
         target.scrollIntoView({ behavior: "smooth", block: "start" });
         target.classList.add("hf-markdown-heading-target");
-      window.setTimeout(() => {
+        window.setTimeout(() => {
           target.classList.remove("hf-markdown-heading-target");
         }, 1400);
       }
@@ -785,44 +680,6 @@ export function MarkdownPanel() {
     };
   }, [workspaceMode, document?.path, document?.content]);
 
-  useEffect(() => {
-    if (!assistantSessionId || !isAssistantStreaming) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const poll = async () => {
-      if (cancelled) {
-        return;
-      }
-
-      try {
-        const streamState = await getAssistantStreamState<StreamState>(assistantSessionId);
-
-        if (cancelled || !streamState) {
-          return;
-        }
-
-        hydrateAssistantStreamState(streamState);
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Markdown assistant stream fallback poll failed:", error);
-        }
-      }
-    };
-
-    void poll();
-    const interval = window.setInterval(() => {
-      void poll();
-    }, 900);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, [assistantSessionId, getAssistantStreamState, hydrateAssistantStreamState, isAssistantStreaming]);
-
   const handlePickFile = useCallback(async () => {
     const directory = document?.path ? getParentDirectory(document.path) : undefined;
     const pickedPath = await pickFile({
@@ -842,14 +699,8 @@ export function MarkdownPanel() {
     const untitled = createUntitledDocument();
     setDocument(untitled);
     setSavedContent(null);
-    setSelection("");
-    setQuestion("");
     setDocumentError(null);
-    setAssistantError(null);
-    currentAiSessionIdRef.current = null;
-    setAssistantSessionId(null);
-    replaceCurrentThread(untitled.path, true);
-  }, [replaceCurrentThread]);
+  }, []);
 
   const handleCreateFile = useCallback(() => {
     if (isDirty) {
@@ -867,15 +718,12 @@ export function MarkdownPanel() {
     }
   }, [performCreateUntitled, performOpenDocument]);
 
-  // "Discard" — drop unsaved changes and proceed with the New/Open action.
   const discardPendingAction = useCallback(() => {
     const action = pendingAction;
     setPendingAction(null);
     if (action) runPendingAction(action);
   }, [pendingAction, runPendingAction]);
 
-  // "Save" — persist the current buffer first, then proceed only if the save
-  // actually completed (so a cancelled Save As dialog doesn't lose the doc).
   const savePendingAction = useCallback(async () => {
     const action = pendingAction;
     if (!action) return;
@@ -898,11 +746,6 @@ export function MarkdownPanel() {
       if (document?.path === path) {
         setDocument(null);
         setSavedContent(null);
-        setSelection("");
-        setQuestion("");
-        setAssistantMessages([]);
-        currentAiSessionIdRef.current = null;
-        setAssistantSessionId(null);
       }
       await loadRecentFiles({ preserveOrder: true });
     } catch (error) {
@@ -911,20 +754,13 @@ export function MarkdownPanel() {
     }
   }, [document?.path, loadRecentFiles, t]);
 
-  // Clear the whole recent list and also close the currently open document so
-  // nothing is left dangling behind an empty list.
   const handleClearRecent = useCallback(async () => {
     try {
       await markdownInvoke("md_clear_recent_files", {});
       rememberLastFile(null);
       setDocument(null);
       setSavedContent(null);
-      setSelection("");
-      setQuestion("");
-      setAssistantMessages([]);
       setDocumentError(null);
-      currentAiSessionIdRef.current = null;
-      setAssistantSessionId(null);
       await loadRecentFiles();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -962,108 +798,10 @@ export function MarkdownPanel() {
     setDragActive(false);
     const path = getDroppedMarkdownPath(event);
     if (!path) {
-      // In Tauri, file paths arrive via the tauri://drag-drop event (handled in
-      // App.tsx), not via the standard HTML DataTransfer API. Silently ignore
-      // null here — the Tauri event will open the file.
       return;
     }
     void openDocument(path);
   }, [openDocument]);
-
-  const sendAssistantIntent = useCallback(async (intent: AssistantIntent) => {
-    if (!document) {
-      setAssistantError(t("markdown.ai.error.documentRequired"));
-      return;
-    }
-
-    const trimmedSelection = selection.trim();
-    const trimmedQuestion = question.trim();
-
-    if ((intent === "explain" || intent === "translate") && !trimmedSelection) {
-      setAssistantError(t("markdown.ai.error.selectionRequired"));
-      return;
-    }
-
-    if (intent === "ask" && !trimmedQuestion) {
-      setAssistantError(t("markdown.ai.error.questionRequired"));
-      return;
-    }
-
-      if (!activeModel) {
-        setAssistantError(t("markdown.ai.modelMissing"));
-        openSettingsTab("models");
-        return;
-      }
-
-    const userMessage: AssistantMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: buildDisplayPrompt(intent, trimmedQuestion, trimmedSelection, t),
-      createdAt: new Date().toISOString(),
-    };
-
-    const prompt = buildAssistantPrompt(intent, document, trimmedSelection, trimmedQuestion);
-
-    setAssistantError(null);
-    setAssistantMessages((previous) => trimStoredThread([...previous, userMessage]));
-    setIsAssistantStreaming(true);
-    if (intent === "ask") {
-      setQuestion("");
-    }
-
-    let sessionId = assistantSessionId;
-
-    try {
-      if (!sessionId) {
-        const now = new Date().toISOString();
-        const session: ChatSession = {
-          id: crypto.randomUUID(),
-          title: `${document.title} · Markdown`,
-          model_config_id: activeModel.id,
-          system_prompt: MARKDOWN_ASSISTANT_SYSTEM_PROMPT,
-          folder_id: null,
-          tags: ["markdown"],
-          pinned: false,
-          token_usage: 0,
-          created_at: now,
-          updated_at: now,
-        };
-        const created = await createAssistantSession<ChatSession>(session);
-        sessionId = created.id;
-        bindAssistantSession(document.path, created.id);
-      }
-
-      await sendAssistantMessage({
-        session_id: sessionId,
-        content: prompt,
-        model_config_id: activeModel.id,
-        system_prompt_override: MARKDOWN_ASSISTANT_SYSTEM_PROMPT,
-      });
-    } catch (error) {
-      setIsAssistantStreaming(false);
-      setAssistantMessages((previous) => previous.filter((message) => message.id !== userMessage.id));
-      const message = error instanceof Error ? error.message : String(error);
-      setAssistantError(message || t("markdown.ai.error.sendFailed"));
-    }
-  }, [
-    activeModel,
-    assistantSessionId,
-    bindAssistantSession,
-    createAssistantSession,
-    document,
-    openSettingsTab,
-    question,
-    selection,
-    sendAssistantMessage,
-    t,
-  ]);
-
-  const handleAssistantKeyDown = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-      event.preventDefault();
-      void sendAssistantIntent("ask");
-    }
-  }, [sendAssistantIntent]);
 
   const editorFocusToken = document?.path
     ? `${document.path}:${workspaceMode}`
@@ -1081,7 +819,7 @@ export function MarkdownPanel() {
       onDrop={handleDrop}
     >
       {dragActive && (
-        <div className="pointer-events-none absolute inset-3 z-20 flex items-center justify-center rounded-[28px] border-2 border-dashed border-primary/40 bg-background/85 text-sm font-medium text-primary shadow-lg backdrop-blur-sm">
+        <div className="pointer-events-none absolute inset-3 z-20 flex items-center justify-center rounded-[24px] border-2 border-dashed border-primary/40 bg-background/85 text-sm font-medium text-primary shadow-lg backdrop-blur-sm">
           {t("markdown.reader.dropHint")}
         </div>
       )}
@@ -1126,7 +864,7 @@ export function MarkdownPanel() {
         />
       )}
 
-      <main ref={mainContentRef} className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/35">
+      <main ref={mainContentRef} className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-background/35">
         <MarkdownHeader
           document={document}
           isDirty={canSave}
@@ -1134,13 +872,20 @@ export function MarkdownPanel() {
           refreshingDocument={refreshingDocument}
           canRefresh={canRefresh}
           workspaceMode={workspaceMode}
-          previewTheme={previewTheme}
           fontScaleLabel={fontScaleLabel}
           onWorkspaceModeChange={setWorkspaceMode}
-          onPreviewThemeChange={setPreviewTheme}
-          onDecreaseFontScale={() => setFontScale((previous) => stepMarkdownFontScale(previous, -1))}
-          onIncreaseFontScale={() => setFontScale((previous) => stepMarkdownFontScale(previous, 1))}
-          onResetFontScale={() => setFontScale(DEFAULT_MARKDOWN_FONT_SCALE)}
+          onDecreaseFontScale={() => {
+            setFontScale((previous) => stepMarkdownFontScale(previous, -1));
+            flashZoomToast();
+          }}
+          onIncreaseFontScale={() => {
+            setFontScale((previous) => stepMarkdownFontScale(previous, 1));
+            flashZoomToast();
+          }}
+          onResetFontScale={() => {
+            setFontScale(DEFAULT_MARKDOWN_FONT_SCALE);
+            flashZoomToast();
+          }}
           onRefresh={() => {
             setDocumentError(null);
             void refreshNow();
@@ -1173,10 +918,18 @@ export function MarkdownPanel() {
               t={t}
             />
           )}
+
+          {zoomToastVisible && (
+            <div className="hf-md-zoom-toast" role="status" aria-live="polite">
+              {fontScaleLabel}
+            </div>
+          )}
+
           <div
             ref={contentAreaRef}
+            style={{ "--hf-md-font-scale": String(fontScale) } as React.CSSProperties}
             className={clsx(
-              "h-full min-h-0 px-6 py-6",
+              "h-full min-h-0 p-4",
               workspaceMode === "read" ? "overflow-auto" : "overflow-hidden",
             )}
           >
@@ -1186,19 +939,14 @@ export function MarkdownPanel() {
                 {t("markdown.reader.loading")}
               </div>
             ) : !document ? (
-              <div className="flex h-full items-center justify-center rounded-3xl border border-dashed border-border bg-surface/20 px-8 text-center text-sm text-foreground-secondary/60">
+              <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border bg-surface/20 px-8 text-center text-sm text-foreground-secondary/60">
                 {t("markdown.reader.emptyState")}
               </div>
             ) : workspaceMode === "read" ? (
               <div
                 ref={previewRef}
-                onMouseUp={capturePreviewSelection}
-                onKeyUp={capturePreviewSelection}
                 style={{ "--hf-md-font-scale": String(fontScale) } as React.CSSProperties}
-                className={clsx(
-                  "mx-auto rounded-[28px] border",
-                  resolvePreviewThemeClass(previewTheme),
-                )}
+                className="hf-preview-surface w-full min-h-full rounded-2xl border"
               >
                 <MarkdownRenderer
                   content={document.content}
@@ -1221,7 +969,6 @@ export function MarkdownPanel() {
                   assetRevision={assetRevision}
                   focusToken={editorFocusToken}
                   onChange={handleEditorContentChange}
-                  onSelectionChange={handleEditorSelectionChange}
                   onActiveHeadingChange={handleActiveHeadingChange}
                 />
               </div>
@@ -1239,7 +986,6 @@ export function MarkdownPanel() {
                   assetRevision={assetRevision}
                   focusToken={editorFocusToken}
                   onChange={handleEditorContentChange}
-                  onSelectionChange={handleEditorSelectionChange}
                   onActiveHeadingChange={handleActiveHeadingChange}
                 />
               </div>
@@ -1247,47 +993,6 @@ export function MarkdownPanel() {
           </div>
         </div>
       </main>
-
-      {/* Right resize handle */}
-      {!isRightSidebarCollapsed && (
-        <div
-          onMouseDown={handleRightResize}
-          className={clsx(
-            "w-1 shrink-0 cursor-col-resize z-10 transition-colors",
-            rightResizing ? "bg-primary/40" : "hover:bg-primary/25",
-          )}
-        />
-      )}
-
-      <AssistantSidebar
-        activeModel={activeModel}
-        isCollapsed={isRightSidebarCollapsed}
-        width={rightWidth}
-        onSetCollapsed={setIsRightSidebarCollapsed}
-        isAssistantStreaming={isAssistantStreaming}
-        assistantMessages={assistantMessages}
-        assistantError={assistantError}
-        question={question}
-        selection={selection}
-        isSelectionCollapsed={isSelectionCollapsed}
-        onClearSelection={() => setSelection("")}
-        onToggleSelectionCollapsed={() => setIsSelectionCollapsed((previous) => !previous)}
-        onQuestionChange={setQuestion}
-        onIntent={(intent) => {
-          void sendAssistantIntent(intent);
-        }}
-        onQuestionKeyDown={handleAssistantKeyDown}
-        onOpenSettings={() => openSettingsTab("models")}
-        onClearMessages={() => {
-          if (document?.path) {
-            replaceCurrentThread(document.path, true);
-          } else {
-            setAssistantMessages([]);
-          }
-        }}
-        themeType={currentThemeType}
-        t={t}
-      />
 
       {previewImageSrc && (
         <ImageLightbox

@@ -1,72 +1,97 @@
+/* =========================================================================
+   HaloForge Markdown Workspace Styles (v0.3.0)
+   Harmonizes with HaloForge Dark / Light + Custom Tint tokens:
+     --hf-primary, --hf-accent, --hf-background, --hf-surface, --hf-border,
+     --hf-text, --hf-text-secondary, --hf-code-background, --hf-sidebar-background
+   ========================================================================= */
+
 .hf-markdown-panel {
-  --hf-md-primary: var(--color-primary, var(--hf-primary, #f97316));
-  --hf-md-background: var(--color-background, var(--hf-background, #0f0f0f));
-  --hf-md-surface: var(--color-surface, var(--hf-surface, #1a1a1a));
-  --hf-md-foreground: var(--color-foreground, var(--hf-text, #e5e5e5));
-  --hf-md-foreground-secondary: var(--color-foreground-secondary, var(--hf-text-secondary, #a3a3a3));
-  --hf-md-border: var(--color-border, var(--hf-border, #2a2a2a));
-  --hf-md-panel-bg: color-mix(in srgb, var(--hf-md-surface) 76%, var(--hf-md-background));
-  --hf-md-panel-bg-soft: color-mix(in srgb, var(--hf-md-background) 82%, var(--hf-md-surface));
+  --hf-md-primary: var(--hf-primary, var(--color-primary, #f97316));
+  --hf-md-accent: var(--hf-accent, var(--hf-md-primary));
+  --hf-md-background: var(--hf-background, var(--color-background, #141416));
+  --hf-md-surface: var(--hf-surface, var(--color-surface, #1c1c1f));
+  --hf-md-foreground: var(--hf-text, var(--color-foreground, #ececef));
+  --hf-md-foreground-secondary: var(--hf-text-secondary, var(--color-foreground-secondary, #a1a1aa));
+  --hf-md-border: var(--hf-border, var(--color-border, #2c2c32));
+  --hf-md-panel-bg: color-mix(in srgb, var(--hf-md-surface) 78%, var(--hf-md-background));
+  --hf-md-panel-bg-soft: color-mix(in srgb, var(--hf-md-background) 84%, var(--hf-md-surface));
   --hf-md-panel-bg-raised: color-mix(in srgb, var(--hf-md-surface) 92%, var(--hf-md-background));
   --hf-md-toolbar-bg: color-mix(in srgb, var(--hf-md-surface) 88%, var(--hf-md-background));
-  --hf-md-toolbar-hover: color-mix(in srgb, var(--hf-md-surface) 72%, var(--hf-md-primary) 12%);
-  --hf-md-code-bg: color-mix(in srgb, var(--hf-md-surface) 72%, var(--hf-md-background));
+  --hf-md-toolbar-hover: color-mix(in srgb, var(--hf-md-surface) 76%, var(--hf-md-primary) 14%);
+  --hf-md-code-bg: color-mix(in srgb, var(--hf-code-background, var(--hf-md-background)) 82%, var(--hf-md-surface));
+  --hf-md-code-header-bg: color-mix(in srgb, var(--hf-md-surface) 55%, var(--hf-md-code-bg));
   --hf-md-code-fg: var(--hf-md-foreground);
-  --hf-md-inline-code-bg: rgba(255, 255, 255, 0.08);
-  --hf-md-inline-code-fg: var(--hf-md-foreground);
+  --hf-md-inline-code-bg: color-mix(in srgb, var(--hf-md-primary) 10%, color-mix(in srgb, var(--hf-md-foreground) 7%, transparent));
+  --hf-md-inline-code-border: color-mix(in srgb, var(--hf-md-primary) 18%, var(--hf-md-border));
+  --hf-md-inline-code-fg: color-mix(in srgb, var(--hf-md-primary) 26%, var(--hf-md-foreground));
+  --hf-md-blockquote-bg: color-mix(in srgb, var(--hf-md-primary) 5%, transparent);
   --hf-md-hljs-fg: #24292e;
-  --hf-md-hljs-keyword: #d73a49;
-  --hf-md-hljs-title: #6f42c1;
-  --hf-md-hljs-attr: #005cc5;
-  --hf-md-hljs-string: #032f62;
-  --hf-md-hljs-built-in: #e36209;
-  --hf-md-hljs-comment: #6a737d;
-  --hf-md-hljs-name: #22863a;
-  --hf-md-hljs-section: #005cc5;
+  --hf-md-hljs-keyword: #cf222e;
+  --hf-md-hljs-title: #8250df;
+  --hf-md-hljs-attr: #0550ae;
+  --hf-md-hljs-string: #0a3069;
+  --hf-md-hljs-built-in: #953800;
+  --hf-md-hljs-comment: #6e7781;
+  --hf-md-hljs-name: #116329;
+  --hf-md-hljs-section: #0550ae;
   --hf-md-hljs-bullet: #735c0f;
-  --hf-md-hljs-addition-bg: #f0fff4;
-  --hf-md-hljs-addition-fg: #22863a;
-  --hf-md-hljs-deletion-bg: #ffeef0;
-  --hf-md-hljs-deletion-fg: #b31d28;
-  --hf-md-table-head-bg: color-mix(in srgb, var(--hf-md-surface) 86%, var(--hf-md-background));
-  --hf-md-table-cell-bg: color-mix(in srgb, var(--hf-md-background) 88%, var(--hf-md-surface));
-  --hf-md-table-alt-bg: color-mix(in srgb, var(--hf-md-surface) 48%, var(--hf-md-background));
-  --hf-md-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+  --hf-md-hljs-addition-bg: #dafbe1;
+  --hf-md-hljs-addition-fg: #116329;
+  --hf-md-hljs-deletion-bg: #ffebe9;
+  --hf-md-hljs-deletion-fg: #82071e;
+  --hf-md-table-head-bg: color-mix(in srgb, var(--hf-md-primary) 6%, color-mix(in srgb, var(--hf-md-surface) 88%, var(--hf-md-background)));
+  --hf-md-table-cell-bg: color-mix(in srgb, var(--hf-md-background) 86%, var(--hf-md-surface));
+  --hf-md-table-alt-bg: color-mix(in srgb, var(--hf-md-surface) 44%, var(--hf-md-background));
+  --hf-md-table-hover-bg: color-mix(in srgb, var(--hf-md-primary) 6%, var(--hf-md-table-cell-bg));
+  --hf-md-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
   position: relative;
   isolation: isolate;
 }
 
 .hf-markdown-panel--light {
-  --hf-md-background: var(--color-background, var(--hf-background, #eef4ff));
-  --hf-md-surface: var(--color-surface, var(--hf-surface, #ffffff));
-  --hf-md-foreground: var(--color-foreground, var(--hf-text, #102033));
-  --hf-md-foreground-secondary: var(--color-foreground-secondary, var(--hf-text-secondary, #61728f));
-  --hf-md-border: var(--color-border, var(--hf-border, #dbe6f5));
-  --hf-md-panel-bg: color-mix(in srgb, white 82%, var(--hf-md-background));
-  --hf-md-panel-bg-soft: color-mix(in srgb, white 76%, var(--hf-md-background));
-  --hf-md-panel-bg-raised: color-mix(in srgb, white 92%, var(--hf-md-surface));
-  --hf-md-toolbar-bg: color-mix(in srgb, white 88%, var(--hf-md-surface));
-  --hf-md-toolbar-hover: color-mix(in srgb, white 80%, var(--hf-md-primary) 12%);
-  --hf-md-code-bg: #f5f8ff;
-  --hf-md-code-fg: #24292e;
-  --hf-md-inline-code-bg: rgba(27, 31, 35, 0.05);
-  --hf-md-inline-code-fg: var(--hf-md-foreground);
-  --hf-md-table-head-bg: color-mix(in srgb, white 78%, var(--hf-md-surface));
-  --hf-md-table-cell-bg: color-mix(in srgb, white 90%, var(--hf-md-background));
-  --hf-md-table-alt-bg: color-mix(in srgb, var(--hf-md-surface) 38%, white);
+  --hf-md-background: var(--hf-background, var(--color-background, #f6f7f9));
+  --hf-md-surface: var(--hf-surface, var(--color-surface, #ffffff));
+  --hf-md-foreground: var(--hf-text, var(--color-foreground, #18181b));
+  --hf-md-foreground-secondary: var(--hf-text-secondary, var(--color-foreground-secondary, #52525b));
+  --hf-md-border: var(--hf-border, var(--color-border, #e4e4e7));
+  --hf-md-panel-bg: color-mix(in srgb, var(--hf-md-surface) 88%, var(--hf-md-background));
+  --hf-md-panel-bg-soft: color-mix(in srgb, var(--hf-md-surface) 76%, var(--hf-md-background));
+  --hf-md-panel-bg-raised: var(--hf-md-surface);
+  --hf-md-toolbar-bg: color-mix(in srgb, var(--hf-md-surface) 92%, var(--hf-md-background));
+  --hf-md-toolbar-hover: color-mix(in srgb, var(--hf-md-surface) 84%, var(--hf-md-primary) 12%);
+  --hf-md-code-bg: color-mix(in srgb, var(--hf-code-background, var(--hf-md-background)) 88%, var(--hf-md-primary) 2%);
+  --hf-md-code-header-bg: color-mix(in srgb, var(--hf-md-border) 34%, var(--hf-md-code-bg));
+  --hf-md-code-fg: color-mix(in srgb, var(--hf-md-foreground) 94%, #000);
+  --hf-md-inline-code-bg: color-mix(in srgb, var(--hf-md-primary) 8%, color-mix(in srgb, var(--hf-md-foreground) 5%, transparent));
+  --hf-md-inline-code-border: color-mix(in srgb, var(--hf-md-primary) 16%, var(--hf-md-border));
+  --hf-md-inline-code-fg: color-mix(in srgb, var(--hf-md-primary) 38%, var(--hf-md-foreground));
+  --hf-md-blockquote-bg: color-mix(in srgb, var(--hf-md-primary) 4%, var(--hf-md-background));
+  --hf-md-table-head-bg: color-mix(in srgb, var(--hf-md-primary) 5%, var(--hf-md-background));
+  --hf-md-table-cell-bg: var(--hf-md-surface);
+  --hf-md-table-alt-bg: color-mix(in srgb, var(--hf-md-background) 52%, var(--hf-md-surface));
+  --hf-md-table-hover-bg: color-mix(in srgb, var(--hf-md-primary) 5%, var(--hf-md-surface));
+  --hf-md-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
 }
 
 .hf-markdown-panel--dark {
-  --hf-md-background: var(--color-background, var(--hf-background, #181818));
-  --hf-md-surface: var(--color-surface, var(--hf-surface, #191919));
-  --hf-md-foreground: var(--color-foreground, var(--hf-text, #f5f5f5));
-  --hf-md-foreground-secondary: var(--color-foreground-secondary, var(--hf-text-secondary, #a1a1aa));
-  --hf-md-border: var(--color-border, var(--hf-border, #2b2b2f));
-  --hf-md-code-bg: #0d1117;
-  --hf-md-code-fg: #c9d1d9;
-  --hf-md-inline-code-bg: rgba(240, 246, 252, 0.1);
-  --hf-md-inline-code-fg: var(--hf-md-foreground);
-  --hf-md-hljs-fg: #c9d1d9;
+  --hf-md-background: var(--hf-background, var(--color-background, #141416));
+  --hf-md-surface: var(--hf-surface, var(--color-surface, #1c1c1f));
+  --hf-md-foreground: var(--hf-text, var(--color-foreground, #f2f2f5));
+  --hf-md-foreground-secondary: var(--hf-text-secondary, var(--color-foreground-secondary, #a1a1aa));
+  --hf-md-border: var(--hf-border, var(--color-border, #2b2b30));
+  --hf-md-panel-bg: color-mix(in srgb, var(--hf-md-surface) 78%, var(--hf-md-background));
+  --hf-md-panel-bg-soft: color-mix(in srgb, var(--hf-md-background) 84%, var(--hf-md-surface));
+  --hf-md-panel-bg-raised: color-mix(in srgb, var(--hf-md-surface) 94%, var(--hf-md-background));
+  --hf-md-toolbar-bg: color-mix(in srgb, var(--hf-md-surface) 88%, var(--hf-md-background));
+  --hf-md-toolbar-hover: color-mix(in srgb, var(--hf-md-surface) 74%, var(--hf-md-primary) 16%);
+  --hf-md-code-bg: color-mix(in srgb, var(--hf-code-background, #111114) 84%, var(--hf-md-background));
+  --hf-md-code-header-bg: color-mix(in srgb, var(--hf-md-surface) 64%, var(--hf-md-code-bg));
+  --hf-md-code-fg: color-mix(in srgb, var(--hf-md-foreground) 92%, #d4d4d8);
+  --hf-md-inline-code-bg: color-mix(in srgb, var(--hf-md-primary) 11%, rgba(255, 255, 255, 0.06));
+  --hf-md-inline-code-border: color-mix(in srgb, var(--hf-md-primary) 20%, var(--hf-md-border));
+  --hf-md-inline-code-fg: color-mix(in srgb, var(--hf-md-primary) 28%, var(--hf-md-foreground));
+  --hf-md-blockquote-bg: color-mix(in srgb, var(--hf-md-primary) 6%, transparent);
+  --hf-md-hljs-fg: #d4d8e2;
   --hf-md-hljs-keyword: #ff7b72;
   --hf-md-hljs-title: #d2a8ff;
   --hf-md-hljs-attr: #79c0ff;
@@ -74,153 +99,198 @@
   --hf-md-hljs-built-in: #ffa657;
   --hf-md-hljs-comment: #8b949e;
   --hf-md-hljs-name: #7ee787;
-  --hf-md-hljs-section: #1f6feb;
+  --hf-md-hljs-section: #58a6ff;
   --hf-md-hljs-bullet: #f2cc60;
   --hf-md-hljs-addition-bg: #033a16;
   --hf-md-hljs-addition-fg: #aff5b4;
   --hf-md-hljs-deletion-bg: #67060c;
   --hf-md-hljs-deletion-fg: #ffdcd7;
-  --hf-md-shadow: 0 24px 64px rgba(0, 0, 0, 0.26);
+  --hf-md-table-head-bg: color-mix(in srgb, var(--hf-md-primary) 7%, color-mix(in srgb, var(--hf-md-surface) 92%, var(--hf-md-background)));
+  --hf-md-table-cell-bg: color-mix(in srgb, var(--hf-md-background) 78%, var(--hf-md-surface));
+  --hf-md-table-alt-bg: color-mix(in srgb, var(--hf-md-surface) 58%, var(--hf-md-background));
+  --hf-md-table-hover-bg: color-mix(in srgb, var(--hf-md-primary) 8%, var(--hf-md-table-cell-bg));
+  --hf-md-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
 }
 
+/* Neutralize HaloForge host global focus ring (`[tabindex]:focus-visible`) on
+   contenteditable editor surfaces so clicking into the editor never draws an
+   ugly orange border around the document. */
+.hf-markdown-panel [contenteditable]:focus,
+.hf-markdown-panel [contenteditable]:focus-visible,
+.hf-markdown-panel .vditor-reset:focus,
+.hf-markdown-panel .vditor-reset:focus-visible,
+.hf-markdown-panel .vditor-ir pre.vditor-reset:focus,
+.hf-markdown-panel .vditor-ir pre.vditor-reset:focus-visible,
+.hf-markdown-panel .vditor-sv:focus,
+.hf-markdown-panel .vditor-sv:focus-visible,
+.hf-markdown-panel .vditor-wysiwyg pre.vditor-reset:focus,
+.hf-markdown-panel .vditor-wysiwyg pre.vditor-reset:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* =========================================================================
+   Single Editorial Read Surface (Full-Width & Responsive Zoom)
+   ========================================================================= */
+
 .hf-preview-surface {
-  border-color: color-mix(in srgb, var(--hf-md-border) 90%, transparent);
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  border-color: color-mix(in srgb, var(--hf-md-border) 88%, transparent);
   background: var(--hf-md-panel-bg-raised);
   color: var(--hf-md-foreground);
   box-shadow: var(--hf-md-shadow);
+  padding: 28px clamp(24px, 3.5vw, 48px) 64px;
 }
 
-.hf-preview-surface .markdown-body {
-  font-size: calc(0.95rem * var(--hf-md-font-scale, 1));
-  line-height: 1.78;
+.hf-preview-surface .markdown-body,
+.hf-preview-surface .vditor-reset {
+  max-width: 100%;
+  width: 100%;
+  font-size: calc(0.95rem * var(--hf-md-font-scale, 1)) !important;
+  line-height: 1.76;
 }
 
-.hf-preview-surface--paper {
-  padding: clamp(2rem, 4vw, 3.5rem);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--hf-md-panel-bg-raised) 96%, white 4%), var(--hf-md-panel-bg-raised));
-}
-
-.hf-preview-surface--paper .markdown-body {
-  max-width: 74ch;
-  margin: 0 auto;
-}
-
-.hf-preview-surface--focus {
-  border-color: color-mix(in srgb, var(--hf-md-primary) 34%, var(--hf-md-border));
-  background: var(--hf-md-panel-bg-soft);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--hf-md-primary) 12%, transparent),
-    0 24px 64px rgba(15, 23, 42, 0.12);
-}
-
-.hf-preview-surface--focus .markdown-body {
-  max-width: 66ch;
-  margin: 0 auto;
-  font-size: calc(1.04rem * var(--hf-md-font-scale, 1));
-  line-height: 1.9;
-}
-
-.hf-preview-surface--compact {
-  padding: 1.25rem 1.5rem;
-  background: color-mix(in srgb, var(--hf-md-panel-bg-raised) 84%, var(--hf-md-background));
-}
-
-.hf-preview-surface--compact .markdown-body {
-  font-size: calc(0.88rem * var(--hf-md-font-scale, 1));
-  line-height: 1.55;
-}
-
-.hf-preview-surface--compact .markdown-body :where(p, ul, ol, blockquote, pre, table) {
-  margin-top: 0.55rem;
-  margin-bottom: 0.55rem;
-}
+/* =========================================================================
+   Shared Editorial Typography (Read Mode + Vditor Preview + IR Editor)
+   ========================================================================= */
 
 .markdown-body {
   color: var(--hf-md-foreground);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
-.markdown-body :where(h1, h2, h3, h4, h5, h6) {
+.markdown-body :where(h1, h2, h3, h4, h5, h6),
+.hf-markdown-editor .vditor-reset :where(h1, h2, h3, h4, h5, h6) {
   color: var(--hf-md-foreground);
   font-weight: 700;
-  line-height: 1.22;
-  margin: 1.45em 0 0.55em;
+  letter-spacing: -0.012em;
+  line-height: 1.28;
+  margin: 1.35em 0 0.55em;
 }
 
-.markdown-body h1 {
-  font-size: 1.95em;
+.markdown-body > div > :first-child,
+.hf-markdown-editor .vditor-reset > :first-child {
+  margin-top: 0;
 }
 
-.markdown-body h2 {
-  font-size: 1.55em;
-  padding-bottom: 0.32em;
-  border-bottom: 1px solid var(--hf-md-border);
+.markdown-body h1,
+.hf-markdown-editor .vditor-reset h1 {
+  font-size: 1.88em;
+  padding-bottom: 0.28em;
+  border-bottom: 1px solid color-mix(in srgb, var(--hf-md-border) 80%, transparent);
 }
 
-.markdown-body h3 {
-  font-size: 1.28em;
+.markdown-body h2,
+.hf-markdown-editor .vditor-reset h2 {
+  font-size: 1.46em;
+  padding-bottom: 0.26em;
+  border-bottom: 1px solid color-mix(in srgb, var(--hf-md-border) 68%, transparent);
 }
 
-.markdown-body :where(p, ul, ol, blockquote, pre, table) {
-  margin: 0.8em 0;
+.markdown-body h3,
+.hf-markdown-editor .vditor-reset h3 {
+  font-size: 1.22em;
 }
 
-.markdown-body :where(ul, ol) {
-  padding-left: 1.5em;
+.markdown-body h4,
+.hf-markdown-editor .vditor-reset h4 {
+  font-size: 1.06em;
 }
 
-.markdown-body li + li {
-  margin-top: 0.25em;
+.markdown-body :where(p, ul, ol, blockquote, pre),
+.hf-markdown-editor .vditor-reset :where(p, ul, ol, blockquote) {
+  margin: 0.75em 0;
 }
 
-.markdown-body a {
+.markdown-body :where(ul, ol),
+.hf-markdown-editor .vditor-reset :where(ul, ol) {
+  padding-left: 1.55em;
+}
+
+.markdown-body li + li,
+.hf-markdown-editor .vditor-reset li + li {
+  margin-top: 0.26em;
+}
+
+.markdown-body a,
+.hf-markdown-editor .vditor-reset a,
+.hf-markdown-editor .vditor-ir__link {
   color: var(--hf-md-primary);
   text-decoration: underline;
-  text-underline-offset: 0.18em;
+  text-decoration-color: color-mix(in srgb, var(--hf-md-primary) 48%, transparent);
+  text-underline-offset: 0.2em;
 }
 
-.markdown-body blockquote {
-  border-left: 3px solid color-mix(in srgb, var(--hf-md-primary) 42%, var(--hf-md-border));
+.markdown-body a:hover,
+.hf-markdown-editor .vditor-reset a:hover,
+.hf-markdown-editor .vditor-ir__link:hover {
+  color: color-mix(in srgb, var(--hf-md-primary) 84%, var(--hf-md-foreground));
+  text-decoration-color: currentColor;
+}
+
+.markdown-body blockquote,
+.hf-markdown-editor .vditor-reset blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--hf-md-primary) 58%, var(--hf-md-border));
+  border-radius: 0 8px 8px 0;
+  background: var(--hf-md-blockquote-bg);
   color: var(--hf-md-foreground-secondary);
-  padding: 0.12em 0 0.12em 1em;
+  padding: 0.5em 1em;
 }
 
-.markdown-body hr {
+.markdown-body blockquote > :first-child,
+.hf-markdown-editor .vditor-reset blockquote > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body blockquote > :last-child,
+.hf-markdown-editor .vditor-reset blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body hr,
+.hf-markdown-editor .vditor-reset hr {
   border: 0;
-  border-top: 1px solid var(--hf-md-border);
-  margin: 1.75em 0;
+  border-top: 1px solid color-mix(in srgb, var(--hf-md-border) 84%, transparent);
+  margin: 1.65em 0;
 }
 
 .markdown-body :where(:not(pre) > code),
 .hf-markdown-editor .vditor-reset :where(:not(pre) > code) {
-  border: 0;
-  border-radius: 3px;
+  border: 1px solid var(--hf-md-inline-code-border);
+  border-radius: 5px;
   background: var(--hf-md-inline-code-bg) !important;
   background-color: var(--hf-md-inline-code-bg) !important;
   box-shadow: none;
   color: var(--hf-md-inline-code-fg) !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 0.92em;
-  line-height: 1.35;
+  font-size: 0.87em;
+  line-height: 1.4;
   letter-spacing: 0;
-  padding: 0 0.12em;
+  padding: 0.1em 0.36em;
 }
 
+/* =========================================================================
+   Code Blocks — Unified Single Card Across Read, Split, and Write (IR)
+   ========================================================================= */
+
 .markdown-body pre,
+.hf-markdown-editor .vditor-preview pre,
 .hf-markdown-editor .vditor-ir__node[data-type="code-block"],
 .hf-markdown-editor .vditor-ir__node[data-type="yaml-front-matter"],
 .hf-markdown-editor .vditor-ir__node[data-type="math-block"] {
   position: relative;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--hf-md-border) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--hf-md-border) 84%, transparent);
   border-radius: 10px;
   background: var(--hf-md-code-bg) !important;
+  margin: 1em 0;
 }
 
 .hf-markdown-editor .vditor-reset pre:not(.vditor-ir__marker--pre) {
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--hf-md-border) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--hf-md-border) 84%, transparent);
   border-radius: 10px;
   background: var(--hf-md-code-bg) !important;
 }
@@ -229,9 +299,8 @@
   background: transparent !important;
 }
 
-/* IR code blocks: the node itself is the single box; the inner editable <pre>
-   and the rendered preview must be flat (no nested border/background) so the
-   block reads as one clean, Typora-like code box. */
+/* Inner <pre> and preview inside IR code-block stay completely flat so the
+   outer `.vditor-ir__node` is the ONE unified code card. */
 .hf-markdown-editor .vditor-ir__node[data-type="code-block"] pre,
 .hf-markdown-editor .vditor-ir__node[data-type="code-block"] .vditor-ir__preview {
   border: 0 !important;
@@ -240,13 +309,189 @@
   margin: 0 !important;
 }
 
-/* Language fence line (```lang) shown while editing — keep it subtle. */
-.hf-markdown-editor .vditor-ir__node[data-type="code-block"] .vditor-ir__marker--pre {
-  display: block;
-  padding: 0.35em 1.1em 0;
-  font-size: 0.8em;
+/* Idle IR code block: collapse markers completely (no phantom top line or
+   blank `:before`/`:after` rows), show ONLY `.vditor-ir__preview` + sleek
+   top-right language pill. */
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"]:not(.vditor-ir__node--expand) {
+  white-space: normal !important;
+}
+
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"]:not(.vditor-ir__node--expand)::before,
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"]:not(.vditor-ir__node--expand)::after {
+  content: none !important;
+}
+
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"]:not(.vditor-ir__node--expand)[data-hf-lang]::before {
+  content: attr(data-hf-lang) !important;
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 2;
+  pointer-events: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--hf-md-foreground-secondary);
-  opacity: 0.75;
+  opacity: 0.72;
+  transition: opacity 0.14s ease;
+}
+
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"]:not(.vditor-ir__node--expand)[data-hf-lang]:hover::before {
+  opacity: 0;
+}
+
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"]:not(.vditor-ir__node--expand) > .vditor-ir__marker {
+  position: absolute !important;
+  display: block !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Active/Editing IR code block: subtle tint border + Typora-like single card! */
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"].vditor-ir__node--expand {
+  border-color: color-mix(in srgb, var(--hf-md-primary) 42%, var(--hf-md-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--hf-md-primary) 16%, transparent);
+}
+
+/* CRITICAL FIX: Hide the duplicate rendered preview while editing standard
+   code blocks so editing NEVER splits into two stacked blocks!
+   Diagrams/math (`data-hf-code-kind="diagram"`) retain their live preview. */
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"][data-hf-code-kind="code"].vditor-ir__node--expand > .vditor-ir__preview {
+  display: none !important;
+}
+
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"][data-hf-code-kind="diagram"].vditor-ir__node--expand > .vditor-ir__preview {
+  border-top: 1px solid color-mix(in srgb, var(--hf-md-border) 75%, transparent) !important;
+  background: var(--hf-md-panel-bg-raised) !important;
+  padding: 0.85em 1.1em !important;
+}
+
+/* Top fence header while editing (` ``` lang `) */
+.hf-markdown-editor .vditor-ir__node--expand[data-type="code-block"]::before {
+  content: "```";
+  display: inline-block;
+  padding: 0.45em 0.3em 0.35em 1.1em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78em;
+  line-height: 1.4;
+  color: var(--hf-md-foreground-secondary);
+  opacity: 0.6;
+  user-select: none;
+}
+
+.hf-markdown-editor .vditor-ir__node--expand[data-type="code-block"] > span.vditor-ir__marker--info {
+  display: inline-block;
+  min-width: 2ch;
+  padding: 0.45em 0.55em 0.35em 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.8em;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--hf-md-primary);
+}
+
+.hf-markdown-editor .vditor-ir__node--expand[data-type="code-block"] > pre.vditor-ir__marker--pre {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-top: 1px solid color-mix(in srgb, var(--hf-md-border) 55%, transparent) !important;
+}
+
+.hf-markdown-editor .vditor-ir__node--expand[data-type="code-block"] > pre.vditor-ir__marker--pre > code {
+  display: block;
+  min-height: 2.2em;
+  padding: 0.85em 1.15em 0.65em !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.88em !important;
+  line-height: 1.62 !important;
+  color: var(--hf-md-code-fg) !important;
+  caret-color: var(--hf-md-primary);
+  white-space: pre !important;
+  overflow-x: auto;
+}
+
+.hf-markdown-editor .vditor-ir__node--expand[data-type="code-block"]::after {
+  content: "```";
+  display: block;
+  padding: 0.1em 1.15em 0.45em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.76em;
+  line-height: 1.3;
+  color: var(--hf-md-foreground-secondary);
+  opacity: 0.42;
+  user-select: none;
+}
+
+/* Read mode & Split preview top-right language badge */
+.markdown-body pre[data-hf-lang]::before,
+.hf-markdown-editor .vditor-preview pre[data-hf-lang]::before {
+  content: attr(data-hf-lang);
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 2;
+  pointer-events: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hf-md-foreground-secondary);
+  opacity: 0.72;
+  transition: opacity 0.14s ease;
+}
+
+.markdown-body pre[data-hf-lang]:hover::before,
+.hf-markdown-editor .vditor-preview pre[data-hf-lang]:hover::before {
+  opacity: 0;
+}
+
+/* Vditor copy button polish */
+.markdown-body .vditor-copy span,
+.hf-markdown-editor .vditor-copy span {
+  top: 7px !important;
+  right: 10px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--hf-md-border) 82%, transparent);
+  background: color-mix(in srgb, var(--hf-md-surface) 88%, var(--hf-md-code-bg));
+  color: var(--hf-md-foreground-secondary);
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.markdown-body .vditor-copy span:hover,
+.hf-markdown-editor .vditor-copy span:hover {
+  border-color: color-mix(in srgb, var(--hf-md-primary) 45%, var(--hf-md-border));
+  color: var(--hf-md-primary);
+}
+
+.markdown-body .vditor-copy svg,
+.hf-markdown-editor .vditor-copy svg {
+  color: inherit !important;
+  width: 13px !important;
+  height: 13px !important;
 }
 
 .markdown-body pre code,
@@ -255,12 +500,12 @@
 .hf-markdown-editor .vditor-reset pre:not(.vditor-ir__marker--pre) > code,
 .hf-markdown-editor .vditor-reset code.hljs,
 .hf-markdown-editor .vditor-reset pre .hljs,
-.hf-markdown-editor .vditor-ir__node[data-type="code-block"] pre > code,
+.hf-markdown-editor .vditor-ir__node[data-type="code-block"] .vditor-ir__preview pre > code,
 .hf-markdown-editor .vditor-ir__node[data-type="yaml-front-matter"] pre > code,
 .hf-markdown-editor .vditor-ir__node[data-type="math-block"] pre > code {
   display: block;
   overflow-x: auto;
-  padding: 1em 1.1em;
+  padding: 0.95em 1.15em;
   background: transparent !important;
   background-color: transparent !important;
   background-image: none !important;
@@ -268,6 +513,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.88em;
   line-height: 1.62;
+  white-space: pre;
 }
 
 .markdown-body .hljs,
@@ -401,38 +647,133 @@
   background-color: var(--hf-md-hljs-deletion-bg);
 }
 
-.markdown-body table {
-  display: block;
+/* =========================================================================
+   Tables — Real `display: table`, Smart Width Distribution & Clean Wrapping
+   Across ALL 3 Modes (Read, Split Preview, Write IR)
+   ========================================================================= */
+
+.hf-md-table-wrap {
   width: 100%;
   overflow-x: auto;
+  margin: 1.1em 0;
+  border: 1px solid color-mix(in srgb, var(--hf-md-border) 90%, transparent);
+  border-radius: 10px;
+  background: var(--hf-md-table-cell-bg);
+}
+
+.hf-md-table-wrap > table {
+  margin: 0 !important;
+}
+
+.hf-md-table-wrap--wide > table {
+  min-width: 620px;
+}
+
+.markdown-body table,
+.hf-markdown-editor .vditor-reset table {
+  display: table !important;
+  width: 100% !important;
+  max-width: 100%;
+  table-layout: auto;
   border-collapse: collapse;
   border-spacing: 0;
+  margin: 1em 0;
+  color: var(--hf-md-foreground);
+  font-size: 0.94em;
+  overflow: visible !important;
+  word-break: normal !important;
 }
 
-.markdown-body :where(th, td) {
-  border: 1px solid var(--hf-md-border);
-  padding: 0.55em 0.75em;
+.markdown-body table tr,
+.hf-markdown-editor .vditor-reset table tr {
+  border-color: var(--hf-md-border);
+  background: var(--hf-md-table-cell-bg) !important;
+  transition: background-color 0.1s ease;
+}
+
+.markdown-body table tbody tr:nth-child(2n),
+.markdown-body table tbody tr:nth-child(2n) td,
+.hf-markdown-editor .vditor-reset table tbody tr:nth-child(2n),
+.hf-markdown-editor .vditor-reset table tbody tr:nth-child(2n) td {
+  background: var(--hf-md-table-alt-bg) !important;
+}
+
+.markdown-body table tbody tr:hover td,
+.hf-markdown-editor .vditor-reset table tbody tr:hover td {
+  background: var(--hf-md-table-hover-bg) !important;
+}
+
+.markdown-body :where(th, td),
+.hf-markdown-editor .vditor-reset table th,
+.hf-markdown-editor .vditor-reset table td {
+  border: 1px solid color-mix(in srgb, var(--hf-md-border) 86%, transparent);
+  background: var(--hf-md-table-cell-bg) !important;
+  color: var(--hf-md-foreground) !important;
+  padding: 0.6em 0.85em;
   text-align: left;
+  vertical-align: top;
+  line-height: 1.56;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
 }
 
-.markdown-body th {
-  background: var(--hf-md-table-head-bg);
-  color: var(--hf-md-foreground);
+.markdown-body th,
+.hf-markdown-editor .vditor-reset table th {
+  background: var(--hf-md-table-head-bg) !important;
   font-weight: 650;
+  word-break: keep-all !important;
+  overflow-wrap: break-word !important;
 }
 
-.markdown-body td {
-  background: var(--hf-md-table-cell-bg);
-  color: var(--hf-md-foreground);
+/* Remove outer cell borders inside rounded `.hf-md-table-wrap` so there is no
+   double border along the card perimeter. */
+.hf-md-table-wrap > table tr:first-child th,
+.hf-md-table-wrap > table tr:first-child td {
+  border-top: 0;
 }
 
-.markdown-body tbody tr:nth-child(2n) td {
-  background: var(--hf-md-table-alt-bg);
+.hf-md-table-wrap > table tr:last-child td {
+  border-bottom: 0;
 }
+
+.hf-md-table-wrap > table th:first-child,
+.hf-md-table-wrap > table td:first-child {
+  border-left: 0;
+}
+
+.hf-md-table-wrap > table th:last-child,
+.hf-md-table-wrap > table td:last-child {
+  border-right: 0;
+}
+
+/* Strip Vditor's editable height-strut pseudo-element in read-only tables */
+.hf-md-table-wrap td:first-child::after,
+.hf-md-table-wrap th:first-child::after {
+  content: none !important;
+  display: none !important;
+}
+
+.markdown-body table :where(td, th) code,
+.hf-markdown-editor .vditor-reset table :where(td, th) code {
+  white-space: pre-wrap !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+}
+
+.hf-markdown-editor .vditor-reset table td p,
+.hf-markdown-editor .vditor-reset table th p {
+  color: inherit;
+  margin: 0;
+}
+
+/* =========================================================================
+   Header & Toolbar Controls
+   ========================================================================= */
 
 .hf-markdown-header {
   border-color: color-mix(in srgb, var(--hf-md-border) 86%, transparent);
-  background: color-mix(in srgb, var(--hf-md-panel-bg) 82%, transparent);
+  background: color-mix(in srgb, var(--hf-md-panel-bg) 86%, transparent);
 }
 
 .hf-toolbar-group {
@@ -457,24 +798,48 @@
   border-color: color-mix(in srgb, var(--hf-md-border) 76%, transparent);
   background: var(--hf-md-toolbar-hover);
   color: var(--hf-md-foreground);
+  outline: none;
 }
 
 .hf-toolbar-icon-button--active,
 .hf-toolbar-text-button--active {
-  border-color: color-mix(in srgb, var(--hf-md-primary) 70%, transparent);
+  border-color: color-mix(in srgb, var(--hf-md-primary) 72%, transparent);
   background: var(--hf-md-primary);
   color: var(--hf-primary-foreground, #fff);
 }
 
 .hf-document-state-pill--dirty {
-  background: color-mix(in srgb, var(--hf-warning, #d7a24b) 14%, transparent);
-  color: color-mix(in srgb, var(--hf-warning, #d7a24b) 82%, var(--hf-md-foreground));
+  background: color-mix(in srgb, var(--hf-warning, #d7a24b) 15%, transparent);
+  color: color-mix(in srgb, var(--hf-warning, #d7a24b) 84%, var(--hf-md-foreground));
 }
 
 .hf-document-state-pill--saved {
-  background: color-mix(in srgb, var(--hf-success, #39c98a) 14%, transparent);
-  color: color-mix(in srgb, var(--hf-success, #39c98a) 82%, var(--hf-md-foreground));
+  background: color-mix(in srgb, var(--hf-success, #39c98a) 15%, transparent);
+  color: color-mix(in srgb, var(--hf-success, #39c98a) 84%, var(--hf-md-foreground));
 }
+
+/* Transient floating zoom pill */
+.hf-md-zoom-toast {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  z-index: 45;
+  pointer-events: none;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--hf-md-primary) 34%, var(--hf-md-border));
+  background: color-mix(in srgb, var(--hf-md-surface) 92%, var(--hf-md-background));
+  color: var(--hf-md-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(8px);
+}
+
+/* =========================================================================
+   Vditor Editor Shell (Write IR & Split SV+Preview)
+   ========================================================================= */
 
 .hf-markdown-editor,
 .hf-markdown-source {
@@ -490,8 +855,8 @@
   background: var(--hf-md-panel-bg);
   color: var(--hf-md-foreground);
   --border-color: var(--hf-md-border);
-  --second-color: color-mix(in srgb, var(--hf-md-foreground-secondary) 58%, transparent);
-  --panel-background-color: var(--hf-md-panel-bg-soft);
+  --second-color: color-mix(in srgb, var(--hf-md-foreground-secondary) 64%, transparent);
+  --panel-background-color: var(--hf-md-panel-bg-raised);
   --toolbar-background-color: var(--hf-md-toolbar-bg);
   --toolbar-icon-color: var(--hf-md-foreground-secondary);
   --toolbar-icon-hover-color: var(--hf-md-primary);
@@ -499,11 +864,11 @@
   --textarea-text-color: var(--hf-md-foreground);
   --heading-border-color: var(--hf-md-border);
   --blockquote-color: var(--hf-md-foreground-secondary);
-  --ir-heading-color: color-mix(in srgb, var(--hf-md-primary) 72%, var(--hf-md-foreground));
+  --ir-heading-color: color-mix(in srgb, var(--hf-md-primary) 76%, var(--hf-md-foreground));
   --ir-title-color: var(--hf-md-foreground-secondary);
-  --ir-bi-color: color-mix(in srgb, var(--hf-md-primary) 58%, var(--hf-md-foreground));
-  --ir-link-color: color-mix(in srgb, var(--hf-md-primary) 78%, var(--hf-md-foreground));
-  --ir-bracket-color: color-mix(in srgb, var(--hf-md-primary) 74%, var(--hf-md-foreground));
+  --ir-bi-color: color-mix(in srgb, var(--hf-md-primary) 64%, var(--hf-md-foreground));
+  --ir-link-color: color-mix(in srgb, var(--hf-md-primary) 82%, var(--hf-md-foreground));
+  --ir-bracket-color: color-mix(in srgb, var(--hf-md-primary) 78%, var(--hf-md-foreground));
   --ir-paren-color: var(--hf-md-foreground-secondary);
 }
 
@@ -514,11 +879,11 @@
 .hf-markdown-editor .vditor-toolbar {
   position: relative;
   z-index: 30;
-  min-height: 42px;
+  min-height: 40px;
   overflow: visible;
   border-color: color-mix(in srgb, var(--hf-md-border) 82%, transparent);
   background: var(--hf-md-toolbar-bg);
-  padding: 3px 8px;
+  padding: 3px 10px;
 }
 
 .hf-markdown-editor .vditor-toolbar__item {
@@ -528,7 +893,7 @@
 
 .hf-markdown-editor .vditor-toolbar__item .vditor-tooltipped {
   width: 30px;
-  border-radius: 8px;
+  border-radius: 7px;
   color: var(--hf-md-foreground-secondary);
 }
 
@@ -536,7 +901,7 @@
 .hf-markdown-editor .vditor-toolbar__item .vditor-tooltipped:focus,
 .hf-markdown-editor .vditor-menu--current {
   background: var(--hf-md-toolbar-hover);
-  color: var(--hf-md-foreground) !important;
+  color: var(--hf-md-primary) !important;
 }
 
 .hf-markdown-editor .vditor-toolbar__divider {
@@ -590,91 +955,55 @@
   color: var(--hf-md-foreground);
 }
 
-.hf-markdown-editor .vditor-ir pre.vditor-reset,
+/* Consistent full-width responsive padding in Write (IR) mode matching Read
+   mode so switching modes never causes width jumps and wide tables/code breathe. */
+.hf-markdown-editor--standalone .vditor-ir pre.vditor-reset {
+  padding: 28px clamp(24px, 3.5vw, 48px) 72px !important;
+  caret-color: var(--hf-md-primary);
+  font-size: calc(0.95rem * var(--hf-md-font-scale, 1)) !important;
+  line-height: 1.76;
+}
+
 .hf-markdown-editor .vditor-sv,
 .hf-markdown-editor .vditor-wysiwyg pre.vditor-reset,
 .hf-markdown-editor .vditor-preview .vditor-reset {
-  padding: 20px 22px;
+  padding: 22px 26px 56px;
   caret-color: var(--hf-md-primary);
-  font-size: calc(0.95rem * var(--hf-md-font-scale, 1));
-  line-height: 1.72;
+  font-size: calc(0.94rem * var(--hf-md-font-scale, 1)) !important;
+  line-height: 1.74;
+}
+
+.hf-markdown-editor .vditor-sv {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: calc(0.9rem * var(--hf-md-font-scale, 1)) !important;
+  line-height: 1.68;
 }
 
 .hf-markdown-editor .vditor-preview {
-  border-left-color: color-mix(in srgb, var(--hf-md-border) 86%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--hf-md-border) 86%, transparent);
 }
 
 .hf-markdown-editor .vditor-preview .vditor-reset {
-  max-width: min(760px, calc(100% - 32px)) !important;
+  max-width: 100% !important;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .hf-markdown-editor .vditor-reset {
   color: var(--hf-md-foreground);
   font-size: calc(0.95rem * var(--hf-md-font-scale, 1));
-  line-height: 1.72;
-}
-
-.hf-markdown-editor .vditor-reset :where(h1, h2, h3, h4, h5, h6) {
-  color: var(--hf-md-foreground);
-}
-
-.hf-markdown-editor .vditor-reset a,
-.hf-markdown-editor .vditor-ir__link {
-  color: var(--hf-md-primary);
+  line-height: 1.76;
 }
 
 .hf-markdown-editor .vditor-reset a {
   cursor: text;
 }
 
-.hf-markdown-editor .vditor-reset a:hover {
-  color: color-mix(in srgb, var(--hf-md-primary) 82%, var(--hf-md-foreground));
-  text-decoration-color: currentColor;
-}
-
-.hf-markdown-editor .vditor-reset table {
-  display: block;
-  width: 100%;
-  overflow-x: auto;
-  border-collapse: collapse;
-  border-spacing: 0;
-  color: var(--hf-md-foreground);
-}
-
-.hf-markdown-editor .vditor-reset table tr,
-.hf-markdown-editor .vditor-reset table tbody tr:nth-child(2n) {
-  border-color: var(--hf-md-border);
-  background: var(--hf-md-table-cell-bg) !important;
-}
-
-.hf-markdown-editor .vditor-reset table tbody tr:nth-child(2n),
-.hf-markdown-editor .vditor-reset table tbody tr:nth-child(2n) td {
-  background: var(--hf-md-table-alt-bg) !important;
-}
-
-.hf-markdown-editor .vditor-reset table th,
-.hf-markdown-editor .vditor-reset table td {
-  border: 1px solid var(--hf-md-border);
-  background: var(--hf-md-table-cell-bg) !important;
-  color: var(--hf-md-foreground) !important;
-  padding: 0.55em 0.75em;
-}
-
-.hf-markdown-editor .vditor-reset table th {
-  background: var(--hf-md-table-head-bg) !important;
-  font-weight: 650;
-}
-
-.hf-markdown-editor .vditor-reset table td p,
-.hf-markdown-editor .vditor-reset table th p {
-  color: inherit;
-  margin: 0;
-}
-
+/* WYSIWYG fallback rules (kept cleanly compatible) */
 .hf-markdown-editor .vditor-wysiwyg__block[data-type="code-block"] {
   position: relative;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--hf-md-border) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--hf-md-border) 84%, transparent);
   border-radius: 10px;
   background: var(--hf-md-code-bg) !important;
 }
@@ -696,7 +1025,7 @@
 .hf-markdown-editor .vditor-wysiwyg__block[data-type="code-block"] > pre:first-child > code {
   display: block;
   min-height: 2.8rem;
-  padding: 1em 1.1em;
+  padding: 1em 1.15em;
   color: var(--hf-md-code-fg) !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.88em;
@@ -724,7 +1053,7 @@
   color: var(--hf-md-code-fg) !important;
   -webkit-text-fill-color: currentColor;
   caret-color: var(--hf-md-primary);
-  padding-bottom: 3.4em;
+  padding-bottom: 2.2em;
 }
 
 .hf-markdown-editor .vditor-wysiwyg__block[data-type="code-block"].hf-vditor-code-block--editing > .vditor-wysiwyg__preview,
@@ -745,7 +1074,6 @@
   padding: 4px;
   border: 1px solid color-mix(in srgb, var(--hf-md-border) 82%, transparent);
   border-radius: 8px;
-  border-color: color-mix(in srgb, var(--hf-md-border) 82%, transparent);
   background: var(--hf-md-panel-bg-raised);
   color: var(--hf-md-foreground);
   box-shadow: 0 14px 38px rgba(15, 23, 42, 0.18);
@@ -756,7 +1084,6 @@
   width: 118px;
   border: 1px solid color-mix(in srgb, var(--hf-md-border) 82%, transparent);
   border-radius: 6px;
-  border-color: color-mix(in srgb, var(--hf-md-border) 82%, transparent);
   background: var(--hf-md-panel-bg);
   color: var(--hf-md-foreground);
 }
@@ -765,9 +1092,14 @@
   color: color-mix(in srgb, var(--hf-md-foreground-secondary) 70%, transparent);
 }
 
+/* =========================================================================
+   Outline Sidebar Active Indicators
+   ========================================================================= */
+
 .hf-outline-heading {
   position: relative;
   border: 1px solid transparent;
+  background: transparent;
   box-shadow: 0 0 0 0 transparent;
 }
 
@@ -803,125 +1135,6 @@
 
 .hf-outline-heading--active::before {
   background: var(--hf-md-primary);
-}
-
-.hf-markdown-editor--embedded {
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.hf-editor-shell {
-  display: flex;
-  min-height: 0;
-  height: 100%;
-  flex-direction: column;
-  background: var(--hf-md-panel-bg-raised);
-}
-
-.hf-editor-toolbar {
-  display: flex;
-  min-height: 42px;
-  align-items: center;
-  gap: 3px;
-  overflow-x: auto;
-  border-bottom: 1px solid color-mix(in srgb, var(--hf-md-border) 82%, transparent);
-  background: var(--hf-md-toolbar-bg);
-  padding: 4px 8px;
-  scrollbar-width: thin;
-}
-
-.hf-editor-toolbar button {
-  display: inline-flex;
-  height: 30px;
-  width: 30px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--hf-md-foreground-secondary);
-  background: transparent;
-}
-
-.hf-editor-toolbar button:hover,
-.hf-editor-toolbar button:focus-visible {
-  border-color: color-mix(in srgb, var(--hf-md-border) 76%, transparent);
-  background: var(--hf-md-toolbar-hover);
-  color: var(--hf-md-foreground);
-  outline: none;
-}
-
-.hf-editor-toolbar-divider {
-  width: 1px;
-  height: 18px;
-  flex: 0 0 auto;
-  margin: 0 4px;
-  background: color-mix(in srgb, var(--hf-md-border) 76%, transparent);
-}
-
-.hf-editor-toolbar-spacer {
-  min-width: 10px;
-  flex: 1 1 auto;
-}
-
-.hf-editor-textarea {
-  min-height: 0;
-  flex: 1 1 auto;
-  width: 100%;
-  resize: none;
-  border: 0;
-  outline: none;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--hf-md-panel-bg-raised) 96%, var(--hf-md-primary) 2%), var(--hf-md-panel-bg-raised));
-  color: var(--hf-md-foreground);
-  caret-color: var(--hf-md-primary);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: calc(0.95rem * var(--hf-md-font-scale, 1));
-  line-height: 1.72;
-  letter-spacing: 0;
-  padding: 20px 22px;
-  tab-size: 2;
-  white-space: pre;
-  overflow: auto;
-}
-
-.hf-editor-textarea::placeholder {
-  color: color-mix(in srgb, var(--hf-md-foreground-secondary) 62%, transparent);
-}
-
-.hf-split-shell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 0;
-  height: 100%;
-  background: var(--hf-md-panel-bg-soft);
-}
-
-.hf-split-pane {
-  min-width: 0;
-  min-height: 0;
-}
-
-.hf-split-pane--editor {
-  overflow: hidden;
-}
-
-.hf-split-pane--preview {
-  overflow: auto;
-  border-left: 1px solid color-mix(in srgb, var(--hf-md-border) 86%, transparent);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--hf-md-panel-bg-raised) 94%, var(--hf-md-primary) 2%), var(--hf-md-panel-bg-raised));
-}
-
-.hf-split-preview-body {
-  min-height: 100%;
-  padding: 20px 24px 32px;
-}
-
-.hf-split-preview-body .markdown-body {
-  font-size: calc(0.92rem * var(--hf-md-font-scale, 1));
-  line-height: 1.68;
 }
 
 .hf-media-embed {
@@ -967,28 +1180,13 @@
 
 .hf-markdown-heading-target {
   border-radius: 8px;
-  box-shadow: 0 0 0 6px color-mix(in srgb, var(--hf-md-primary) 14%, transparent);
-}
-
-@media (max-width: 900px) {
-  .hf-split-shell {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(220px, 42%);
-  }
-
-  .hf-split-pane--preview {
-    border-top: 1px solid color-mix(in srgb, var(--hf-md-border) 86%, transparent);
-    border-left: 0;
-  }
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--hf-md-primary) 16%, transparent);
 }
 
 /* =========================================================================
    Editor overlays — fully self-contained styling.
-   These deliberately avoid Tailwind utility classes: the plugin renders inside
-   HaloForge and does NOT ship its own Tailwind build, so any utility class the
-   host doesn't also use gets purged from the host stylesheet and silently does
-   nothing. Everything the popovers need is defined here instead.
    ========================================================================= */
+
 .hf-md-overlay-backdrop {
   position: fixed;
   inset: 0;
@@ -1003,7 +1201,7 @@
   border-radius: 12px;
   border: 1px solid var(--hf-md-border);
   background: var(--hf-md-surface);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
   color: var(--hf-md-foreground);
   font-size: 12px;
 }
@@ -1069,7 +1267,7 @@
 }
 
 .hf-md-picker__input:focus {
-  border-color: color-mix(in srgb, var(--hf-md-primary) 50%, var(--hf-md-border));
+  border-color: color-mix(in srgb, var(--hf-md-primary) 55%, var(--hf-md-border));
 }
 
 .hf-md-picker__insert {
@@ -1100,7 +1298,7 @@
   border-radius: 12px;
   border: 1px solid var(--hf-md-border);
   background: var(--hf-md-surface);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
   animation: hf-md-context-in 0.09s ease-out;
 }
 
@@ -1120,7 +1318,7 @@
 }
 
 .hf-md-context-menu__item:hover {
-  background: color-mix(in srgb, var(--hf-md-primary) 12%, transparent);
+  background: color-mix(in srgb, var(--hf-md-primary) 14%, transparent);
 }
 
 .hf-md-context-menu__item--danger {
@@ -1353,7 +1551,7 @@
 }
 
 .hf-md-find-bar__btn:hover {
-  background: color-mix(in srgb, var(--hf-md-primary) 12%, transparent);
+  background: color-mix(in srgb, var(--hf-md-primary) 14%, transparent);
   color: var(--hf-md-foreground);
 }
 
@@ -1372,7 +1570,35 @@
   color: #fff;
 }
 
-/* Recent-file row hover remove button (self-contained; host Tailwind purges group-hover) */
+/* Live syntax highlighting colors for actively edited IR code blocks
+   (CSS Custom Highlight API — zero DOM mutation, zero caret jitter).
+   Static theme-keyed colors avoid WebKit/Chromium custom-property inheritance
+   edge cases on root-scoped `::highlight()` pseudo-elements. */
+::highlight(hf-code-dark-keyword) { color: #ff7b72; }
+::highlight(hf-code-dark-title) { color: #d2a8ff; }
+::highlight(hf-code-dark-attr) { color: #79c0ff; }
+::highlight(hf-code-dark-string) { color: #a5d6ff; }
+::highlight(hf-code-dark-built-in) { color: #ffa657; }
+::highlight(hf-code-dark-comment) { color: #8b949e; }
+::highlight(hf-code-dark-name) { color: #7ee787; }
+::highlight(hf-code-dark-section) { color: #58a6ff; }
+::highlight(hf-code-dark-bullet) { color: #f2cc60; }
+::highlight(hf-code-dark-addition) { color: #aff5b4; background-color: #033a16; }
+::highlight(hf-code-dark-deletion) { color: #ffdcd7; background-color: #67060c; }
+
+::highlight(hf-code-light-keyword) { color: #cf222e; }
+::highlight(hf-code-light-title) { color: #8250df; }
+::highlight(hf-code-light-attr) { color: #0550ae; }
+::highlight(hf-code-light-string) { color: #0a3069; }
+::highlight(hf-code-light-built-in) { color: #953800; }
+::highlight(hf-code-light-comment) { color: #6e7781; }
+::highlight(hf-code-light-name) { color: #116329; }
+::highlight(hf-code-light-section) { color: #0550ae; }
+::highlight(hf-code-light-bullet) { color: #735c0f; }
+::highlight(hf-code-light-addition) { color: #116329; background-color: #dafbe1; }
+::highlight(hf-code-light-deletion) { color: #82071e; background-color: #ffebe9; }
+
+/* Recent-file row hover remove button */
 .hf-md-recent-remove {
   visibility: hidden;
   height: 20px;
@@ -1395,7 +1621,7 @@
   color: #f87171;
 }
 
-/* Unsaved-changes confirm dialog (self-contained) */
+/* Unsaved-changes confirm dialog */
 .hf-md-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1480,7 +1706,7 @@
   border-radius: 12px;
   border: 1px solid var(--hf-md-border);
   background: var(--hf-md-surface);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
 }
 
 .hf-md-linkedit__row {
@@ -1509,7 +1735,7 @@
 }
 
 .hf-md-linkedit__input:focus {
-  border-color: color-mix(in srgb, var(--hf-md-primary) 50%, var(--hf-md-border));
+  border-color: color-mix(in srgb, var(--hf-md-primary) 55%, var(--hf-md-border));
 }
 
 .hf-md-linkedit__actions {
@@ -1525,21 +1751,21 @@
   font-size: 13px;
 }
 
-/* Code-fence language hint (vditor.hint.element) — this is the ONLY
-   `.vditor-hint` that is a direct child of `.vditor-content`; the toolbar's
-   other dropdown panels (headings, themes, export, ...) share the same class
-   but live inside `.vditor-toolbar`, so this selector doesn't touch them. */
+/* Code-fence language hint (` ``` ` autocomplete popup) */
 .hf-markdown-editor .vditor-content > .vditor-hint {
-  max-height: 220px;
+  max-height: 224px;
+  min-width: 152px;
   overflow-y: auto;
   padding: 4px;
   border-radius: 10px;
-  border: 1px solid var(--hf-md-border);
+  border: 1px solid color-mix(in srgb, var(--hf-md-primary) 26%, var(--hf-md-border));
   background: var(--hf-md-surface);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
 }
 
 .hf-markdown-editor .vditor-content > .vditor-hint button {
+  width: 100%;
+  text-align: left;
   border-radius: 6px;
   padding: 5px 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
@@ -1549,6 +1775,26 @@
 
 .hf-markdown-editor .vditor-content > .vditor-hint button.vditor-hint--current,
 .hf-markdown-editor .vditor-content > .vditor-hint button:hover {
-  background: color-mix(in srgb, var(--hf-md-primary) 16%, transparent) !important;
-  color: var(--hf-md-foreground) !important;
+  background: color-mix(in srgb, var(--hf-md-primary) 18%, transparent) !important;
+  color: var(--hf-md-primary) !important;
+  font-weight: 600;
+}
+
+/* Toolbar dropdown menus (headings, etc.) harmonized with Dark/Light/Tint */
+.hf-markdown-editor .vditor-toolbar .vditor-hint {
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--hf-md-border);
+  background: var(--hf-md-surface);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+}
+
+.hf-markdown-editor .vditor-toolbar .vditor-hint button {
+  border-radius: 6px;
+  color: var(--hf-md-foreground);
+}
+
+.hf-markdown-editor .vditor-toolbar .vditor-hint button:hover {
+  background: color-mix(in srgb, var(--hf-md-primary) 14%, transparent) !important;
+  color: var(--hf-md-primary) !important;
 }

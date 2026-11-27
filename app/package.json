@@ -1,11 +1,12 @@
 {
   "name": "@hf-plugin-markdown/frontend",
-  "version": "0.2.29",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "prebuild": "node scripts/generate-vditor-assets.mjs",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "dev": "node scripts/generate-vditor-assets.mjs && vite build --watch"
   },
   "dependencies": {

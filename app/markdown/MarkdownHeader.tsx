@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 import clsx from "clsx";
-import { BookOpen, Columns2, FilePenLine, Minus, Palette, Plus, RefreshCw, Save, SaveAll } from "lucide-react";
+import { BookOpen, Columns2, FilePenLine, Minus, Plus, RefreshCw, Save, SaveAll } from "lucide-react";
 import type {
   MarkdownDocument,
   MarkdownTranslator,
-  PreviewTheme,
   WorkspaceMode,
 } from "./types";
 
@@ -15,10 +14,8 @@ interface MarkdownHeaderProps {
   refreshingDocument: boolean;
   canRefresh: boolean;
   workspaceMode: WorkspaceMode;
-  previewTheme: PreviewTheme;
   fontScaleLabel: string;
   onWorkspaceModeChange: (mode: WorkspaceMode) => void;
-  onPreviewThemeChange: (theme: PreviewTheme) => void;
   onDecreaseFontScale: () => void;
   onIncreaseFontScale: () => void;
   onResetFontScale: () => void;
@@ -67,17 +64,6 @@ function getWorkspaceModeLabel(mode: WorkspaceMode, t: MarkdownTranslator) {
   }
 }
 
-function getPreviewThemeLabel(theme: PreviewTheme, t: MarkdownTranslator) {
-  switch (theme) {
-    case "paper":
-      return t("markdown.reader.theme.paper");
-    case "focus":
-      return t("markdown.reader.theme.focus");
-    case "compact":
-      return t("markdown.reader.theme.compact");
-  }
-}
-
 export function MarkdownHeader({
   document,
   isDirty,
@@ -85,10 +71,8 @@ export function MarkdownHeader({
   refreshingDocument,
   canRefresh,
   workspaceMode,
-  previewTheme,
   fontScaleLabel,
   onWorkspaceModeChange,
-  onPreviewThemeChange,
   onDecreaseFontScale,
   onIncreaseFontScale,
   onResetFontScale,
@@ -102,7 +86,6 @@ export function MarkdownHeader({
     { mode: "split", icon: Columns2 },
     { mode: "write", icon: FilePenLine },
   ];
-  const previewThemes: PreviewTheme[] = ["paper", "focus", "compact"];
 
   const documentMeta = document
     ? [
@@ -146,22 +129,34 @@ export function MarkdownHeader({
         </div>
 
         {/* Toolbar — compact, never shrinks */}
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5">
           {/* Mode switcher */}
           <div className="hf-toolbar-group flex items-center gap-0.5 rounded-full border p-0.5 shadow-sm">
-            {workspaceModes.map(({ mode, icon: Icon }) => (
-              <ToolbarIconButton
-                key={mode}
-                title={getWorkspaceModeLabel(mode, t)}
-                active={workspaceMode === mode}
-                onClick={() => onWorkspaceModeChange(mode)}
-              >
-                <Icon size={13} />
-              </ToolbarIconButton>
-            ))}
+            {workspaceModes.map(({ mode, icon: Icon }) => {
+              const isActive = workspaceMode === mode;
+              const label = getWorkspaceModeLabel(mode, t);
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  title={label}
+                  aria-pressed={isActive}
+                  onClick={() => onWorkspaceModeChange(mode)}
+                  className={clsx(
+                    "hf-toolbar-mode-button inline-flex h-7 items-center justify-center gap-1 rounded-full border px-2.5 text-[11px] font-medium transition-colors",
+                    isActive
+                      ? "hf-toolbar-text-button--active shadow-sm"
+                      : "hf-toolbar-text-button--idle",
+                  )}
+                >
+                  <Icon size={12.5} />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Font size */}
+          {/* Zoom */}
           <div
             className={clsx(
               "hf-toolbar-group flex items-center gap-0.5 rounded-full border p-0.5 shadow-sm",
@@ -170,61 +165,25 @@ export function MarkdownHeader({
             aria-hidden={!document}
           >
             <ToolbarIconButton
-              title={`${t("markdown.reader.fontDecrease")} · Cmd/Ctrl -`}
+              title={`${t("markdown.reader.fontDecrease")} · Cmd/Ctrl - · ${t("markdown.reader.zoomHint")}`}
               onClick={onDecreaseFontScale}
             >
               <Minus size={12} />
             </ToolbarIconButton>
             <button
               type="button"
-              title={`${t("markdown.reader.fontReset")} · Cmd/Ctrl 0`}
+              title={`${t("markdown.reader.fontReset")} · Cmd/Ctrl 0 · ${t("markdown.reader.zoomHint")}`}
               onClick={onResetFontScale}
-              className="hf-toolbar-label-button inline-flex h-7 min-w-[40px] items-center justify-center rounded-full border px-1.5 text-[11px] font-medium transition-colors"
+              className="hf-toolbar-label-button inline-flex h-7 min-w-[44px] items-center justify-center rounded-full border px-1.5 text-[11px] font-medium tabular-nums transition-colors"
             >
               {fontScaleLabel}
             </button>
             <ToolbarIconButton
-              title={`${t("markdown.reader.fontIncrease")} · Cmd/Ctrl +`}
+              title={`${t("markdown.reader.fontIncrease")} · Cmd/Ctrl + · ${t("markdown.reader.zoomHint")}`}
               onClick={onIncreaseFontScale}
             >
               <Plus size={12} />
             </ToolbarIconButton>
-          </div>
-
-          {/* Theme picker — read mode only, reserved so mode buttons never shift */}
-          <div
-            className={clsx(
-              "hf-toolbar-group flex items-center gap-0.5 rounded-full border p-0.5 shadow-sm",
-              workspaceMode !== "read" && "invisible pointer-events-none",
-            )}
-            title={t("markdown.reader.previewStyle")}
-            aria-hidden={workspaceMode !== "read"}
-          >
-            <span className="inline-flex h-7 w-7 items-center justify-center text-foreground-secondary/60">
-              <Palette size={12} />
-            </span>
-            {previewThemes.map((theme) => {
-              const isActive = previewTheme === theme;
-              const label = getPreviewThemeLabel(theme, t);
-              return (
-                <button
-                  key={theme}
-                  type="button"
-                  title={label}
-                  aria-pressed={isActive}
-                  tabIndex={workspaceMode === "read" ? 0 : -1}
-                  onClick={() => onPreviewThemeChange(theme)}
-                  className={clsx(
-                    "inline-flex h-7 items-center justify-center rounded-full px-2 text-[11px] font-medium transition-colors",
-                    isActive
-                      ? "hf-toolbar-text-button--active shadow-sm"
-                      : "hf-toolbar-text-button--idle",
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
           </div>
 
           {/* File actions */}
@@ -243,7 +202,7 @@ export function MarkdownHeader({
               <RefreshCw size={13} className={refreshingDocument ? "animate-spin" : undefined} />
             </ToolbarIconButton>
             <ToolbarIconButton
-              title={saveTitle}
+              title={`${saveTitle} · Cmd/Ctrl+S`}
               disabled={!isDirty || savingDocument}
               onClick={onSave}
             >

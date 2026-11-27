@@ -2,20 +2,20 @@
   "$schema": "https://haloforge.dev/schemas/plugin/v1.json",
   "id": "dev.haloforge.markdown",
   "name": "Markdown Workspace",
-  "version": "0.2.29",
-  "description": "AI-native Markdown reader workspace with recent files, document context, and an embedded assistant panel.",
-  "long_description": "Adds a top-level Markdown module to HaloForge so enabled users can open Markdown files from the sidebar, preview them with high-quality rendering, keep a recent-file list, and use a context-aware AI reading panel designed to evolve into a full editor workflow.",
+  "version": "0.3.0",
+  "description": "High-craft Markdown reader and Typora-style live editor workspace with outline, split view, and recent files.",
+  "long_description": "Adds a top-level Markdown module to HaloForge so users can read, edit in Typora-style instant rendering mode, or write side-by-side in split view with recent files, document outline, zoom, and local media support.",
   "author": "HaloForge Team",
   "homepage": "https://haloforge.dev/catalog/plugins/markdown",
   "license": "MIT",
-  "keywords": ["markdown", "reader", "knowledge", "ai"],
+  "keywords": ["markdown", "editor", "reader", "knowledge"],
   "icon": "assets/icon.png",
   "compatibility": {
     "min_app_version": "0.8.0",
     "min_host_api_version": "0.2.18",
     "platforms": ["windows", "macos", "linux"]
   },
-  "host_capabilities": ["navigation", "file_intents", "file_dialogs", "file_watch", "aichat", "theme_read", "event_subscribe", "deep_links"],
+  "host_capabilities": ["navigation", "file_intents", "file_dialogs", "file_watch", "theme_read", "event_subscribe", "deep_links"],
   "capability_levels": [0],
   "integration": {
     "level0": {
@@ -63,27 +63,13 @@
     { "type": "host_file_intents" },
     { "type": "host_file_dialogs" },
     { "type": "host_file_watch" },
-    { "type": "host_aichat_access" },
     { "type": "host_theme_read" },
     { "type": "host_event_subscribe" },
     { "type": "host_deep_links" }
   ],
   "settings_schema": {
     "type": "object",
-    "properties": {
-      "default_reader_theme": {
-        "type": "string",
-        "title": "Default reader theme",
-        "default": "paper"
-      },
-      "max_context_chars": {
-        "type": "number",
-        "title": "Maximum document context characters",
-        "default": 14000,
-        "minimum": 4000,
-        "maximum": 40000
-      }
-    }
+    "properties": {}
   },
   "commands": [
     { "id": "md_recent_files", "description": "List recently opened Markdown files" },

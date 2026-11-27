@@ -8,6 +8,9 @@ import { fileURLToPath } from "node:url";
 const appRoot = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("production"),
+  },
   plugins: [
     react(),
     tailwindcss(),

@@ -1,26 +1,17 @@
 import type { DragEvent } from "react";
 import { invokePlugin } from "@haloforge/plugin-sdk";
 import type {
-  AssistantIntent,
-  AssistantMessage,
   FileWithPath,
   MarkdownDocument,
   MarkdownHeading,
   MarkdownTranslator,
-  PreviewTheme,
-  SessionMap,
-  ThreadStore,
   WorkspaceMode,
 } from "./types";
 
 export const LAST_FILE_STORAGE_KEY = "hf-plugin-markdown:last-file";
-export const SESSION_MAP_STORAGE_KEY = "hf-plugin-markdown:assistant-session-map";
-export const THREADS_STORAGE_KEY = "hf-plugin-markdown:assistant-threads";
-export const PREVIEW_THEME_STORAGE_KEY = "hf-plugin-markdown:preview-theme";
 export const WORKSPACE_MODE_STORAGE_KEY = "hf-plugin-markdown:workspace-mode";
 export const MARKDOWN_FONT_SCALE_STORAGE_KEY = "hf-plugin-markdown:font-scale";
 export const LEFT_SIDEBAR_COLLAPSED_STORAGE_KEY = "hf-plugin-markdown:left-sidebar-collapsed";
-export const RIGHT_SIDEBAR_COLLAPSED_STORAGE_KEY = "hf-plugin-markdown:right-sidebar-collapsed";
 export const MARKDOWN_FILTERS = ["md", "markdown", "mdown", "mkd"];
 
 /**
@@ -46,29 +37,12 @@ export function createUntitledDocument(): MarkdownDocument {
     estimated_read_time_min: 0,
   };
 }
-export const MAX_CONTEXT_CHARS = 14000;
-export const MAX_SELECTION_CHARS = 2400;
-export const MAX_STORED_THREAD_MESSAGES = 24;
-export const PREVIEW_THEME_OPTIONS: PreviewTheme[] = ["paper", "focus", "compact"];
+
 export const DEFAULT_MARKDOWN_FONT_SCALE = 1;
-export const MIN_MARKDOWN_FONT_SCALE = 0.8;
-export const MAX_MARKDOWN_FONT_SCALE = 1.6;
+export const MIN_MARKDOWN_FONT_SCALE = 0.6;
+export const MAX_MARKDOWN_FONT_SCALE = 2.2;
 export const MARKDOWN_FONT_SCALE_STEP = 0.1;
-
-export const MARKDOWN_ASSISTANT_SYSTEM_PROMPT = `你是 HaloForge 的 Markdown 阅读助手。
-
-你的任务不是泛泛聊天，而是严格围绕用户当前打开的 Markdown 文档提供帮助：
-- 总结文档
-- 解释用户选中的段落
-- 翻译选中内容
-- 回答关于该文档的问题
-
-回答要求：
-- 默认使用中文
-- 优先基于提供的文档上下文，不要编造文档中没有的事实
-- 若上下文不足，要明确说明信息不足
-- 回答尽量结构化，便于继续阅读和编辑
-- 回答长度适中，不要无谓重复用户已提供的原文`;
+export const MARKDOWN_WHEEL_ZOOM_STEP = 0.05;
 
 export function markdownInvoke<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   return invokePlugin<T>(cmd, args);
@@ -92,14 +66,6 @@ export function saveJsonStorage<T>(key: string, value: T) {
   }
 }
 
-export function loadPreviewTheme(): PreviewTheme {
-  const value = loadJsonStorage<string | null>(PREVIEW_THEME_STORAGE_KEY, null);
-  if (value === "paper" || value === "focus" || value === "compact") {
-    return value;
-  }
-  return "paper";
-}
-
 export function loadWorkspaceMode(): WorkspaceMode {
   const value = loadJsonStorage<string | null>(WORKSPACE_MODE_STORAGE_KEY, null);
   if (value === "read") return "read";
@@ -113,7 +79,7 @@ export function normalizeMarkdownFontScale(value: number): number {
   }
 
   const clamped = Math.min(MAX_MARKDOWN_FONT_SCALE, Math.max(MIN_MARKDOWN_FONT_SCALE, value));
-  return Math.round(clamped * 10) / 10;
+  return Math.round(clamped * 20) / 20;
 }
 
 export function loadMarkdownFontScale(): number {
@@ -121,8 +87,12 @@ export function loadMarkdownFontScale(): number {
   return normalizeMarkdownFontScale(value ?? DEFAULT_MARKDOWN_FONT_SCALE);
 }
 
-export function stepMarkdownFontScale(value: number, direction: -1 | 1): number {
-  return normalizeMarkdownFontScale(value + direction * MARKDOWN_FONT_SCALE_STEP);
+export function stepMarkdownFontScale(
+  value: number,
+  direction: -1 | 1,
+  step = MARKDOWN_FONT_SCALE_STEP,
+): number {
+  return normalizeMarkdownFontScale(value + direction * step);
 }
 
 export function formatMarkdownFontScale(value: number): string {
@@ -143,22 +113,6 @@ export function rememberLastFile(path: string | null) {
   } catch {
     // ignore localStorage failures
   }
-}
-
-export function loadSessionMap(): SessionMap {
-  return loadJsonStorage<SessionMap>(SESSION_MAP_STORAGE_KEY, {});
-}
-
-export function saveSessionMap(value: SessionMap) {
-  saveJsonStorage(SESSION_MAP_STORAGE_KEY, value);
-}
-
-export function loadThreads(): ThreadStore {
-  return loadJsonStorage<ThreadStore>(THREADS_STORAGE_KEY, {});
-}
-
-export function saveThreads(value: ThreadStore) {
-  saveJsonStorage(THREADS_STORAGE_KEY, value);
 }
 
 export function formatTimestamp(value: string): string {
@@ -226,19 +180,6 @@ export function getDroppedMarkdownPath(event: DragEvent<HTMLDivElement>): string
   }
 
   return null;
-}
-
-export function getSelectionText(container: HTMLElement | null): string {
-  if (!container) return "";
-  const selection = window.getSelection();
-  if (!selection || selection.isCollapsed) return "";
-
-  const anchorNode = selection.anchorNode;
-  const focusNode = selection.focusNode;
-  if (!anchorNode || !focusNode) return "";
-  if (!container.contains(anchorNode) || !container.contains(focusNode)) return "";
-
-  return selection.toString().trim();
 }
 
 function defaultTitleFromPath(path: string): string {
@@ -340,117 +281,6 @@ export function translateDocumentError(message: string, t: MarkdownTranslator, f
     return t("markdown.reader.newExists");
   }
   return message || fallback || t("markdown.reader.saveFailed");
-}
-
-export function resolvePreviewThemeClass(theme: PreviewTheme) {
-  if (theme === "focus") {
-    return "hf-preview-surface hf-preview-surface--focus max-w-[820px]";
-  }
-  if (theme === "compact") {
-    return "hf-preview-surface hf-preview-surface--compact max-w-[1040px]";
-  }
-  return "hf-preview-surface hf-preview-surface--paper max-w-[980px]";
-}
-
-export function buildDisplayPrompt(
-  intent: AssistantIntent,
-  question: string,
-  selection: string,
-  t: MarkdownTranslator,
-) {
-  if (intent === "summarize") {
-    return t("markdown.ai.action.summarize");
-  }
-  if (intent === "explain") {
-    return selection || t("markdown.ai.action.explain");
-  }
-  if (intent === "translate") {
-    return selection || t("markdown.ai.action.translate");
-  }
-  return question.trim();
-}
-
-function buildContextWindow(document: MarkdownDocument, selection: string): string {
-  const trimmedSelection = selection.trim().slice(0, MAX_SELECTION_CHARS);
-  const outline = document.headings
-    .slice(0, 18)
-    .map((heading) => `${"  ".repeat(Math.max(0, heading.level - 1))}- ${heading.text}`)
-    .join("\n");
-
-  if (trimmedSelection) {
-    const leading = document.content.slice(0, Math.min(document.content.length, MAX_CONTEXT_CHARS / 2));
-    const trailing = document.content.length > MAX_CONTEXT_CHARS / 2
-      ? document.content.slice(-Math.min(document.content.length, MAX_CONTEXT_CHARS / 3))
-      : "";
-
-    return [
-      `用户当前选中的文本：\n"""\n${trimmedSelection}\n"""`,
-      outline ? `文档大纲：\n${outline}` : "",
-      `文档前文上下文：\n"""\n${leading}\n"""`,
-      trailing ? `文档末尾上下文：\n"""\n${trailing}\n"""` : "",
-    ].filter(Boolean).join("\n\n");
-  }
-
-  const excerpt = document.content.slice(0, Math.min(document.content.length, MAX_CONTEXT_CHARS));
-  return [
-    outline ? `文档大纲：\n${outline}` : "",
-    `文档内容上下文：\n"""\n${excerpt}${document.content.length > excerpt.length ? "\n\n[内容已截断]" : ""}\n"""`,
-  ].filter(Boolean).join("\n\n");
-}
-
-export function buildAssistantPrompt(
-  intent: AssistantIntent,
-  document: MarkdownDocument,
-  selection: string,
-  question: string,
-) {
-  const baseInstruction = intent === "summarize"
-    ? "请总结当前 Markdown 文档，给出核心结论、主要章节和推荐的下一步阅读重点。"
-    : intent === "explain"
-      ? "请解释用户当前选中的内容，先说明它在文档中的作用，再给出必要的背景知识。"
-      : intent === "translate"
-        ? "请把用户当前选中的内容翻译成简洁自然的中文，并保留必要的 Markdown 语义。"
-        : `请围绕当前 Markdown 文档回答这个问题：${question.trim()}`;
-
-  return [
-    `文档标题：${document.title}`,
-    `文档路径：${document.path}`,
-    buildContextWindow(document, selection),
-    baseInstruction,
-    "回答要求：如果上下文不足，请明确指出缺失的信息；如果是总结，尽量使用项目符号；如果是解释或翻译，优先针对选区，不要泛化。",
-  ].join("\n\n");
-}
-
-export function upsertAssistantMessage(messages: AssistantMessage[], chunk: { message_id: string; delta: string; done: boolean }): AssistantMessage[] {
-  const existingIndex = messages.findIndex((message) => message.id === chunk.message_id);
-  if (existingIndex === -1) {
-    return [
-      ...messages,
-      {
-        id: chunk.message_id,
-        role: "assistant",
-        content: chunk.delta,
-        createdAt: new Date().toISOString(),
-        isStreaming: !chunk.done,
-      },
-    ];
-  }
-
-  return messages.map((message, index) => {
-    if (index !== existingIndex) return message;
-    return {
-      ...message,
-      content: `${message.content}${chunk.delta}`,
-      isStreaming: !chunk.done,
-    };
-  });
-}
-
-export function trimStoredThread(messages: AssistantMessage[]): AssistantMessage[] {
-  if (messages.length <= MAX_STORED_THREAD_MESSAGES) {
-    return messages;
-  }
-  return messages.slice(messages.length - MAX_STORED_THREAD_MESSAGES);
 }
 
 const TOC_MARKER_RE = /^\[toc\]$/i;
